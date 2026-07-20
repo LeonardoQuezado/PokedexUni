@@ -36,6 +36,53 @@ function buildRouter(uploadsDir) {
     return Array.isArray(value) ? value.map((v) => String(v).trim()).filter(Boolean) : [];
   }
 
+  function parseEvolvesToId(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function validateEvolvesTo(db, creatureId, evolvesToId) {
+    if (evolvesToId == null) return null;
+    if (evolvesToId === creatureId) return 'Uma criatura não pode evoluir para si mesma';
+    const target = db.creatures.find((c) => c.id === evolvesToId);
+    if (!target) return 'Criatura de destino da evolução não encontrada';
+    const conflict = db.creatures.find((c) => c.evolvesToId === evolvesToId && c.id !== creatureId);
+    if (conflict) return `${conflict.name} já evolui para ${target.name}`;
+    return null;
+  }
+
+  function summarize(c) {
+    return { id: c.id, number: c.number, name: c.name, types: c.types, imageUrl: c.imageUrl };
+  }
+
+  function buildEvolutionChain(db, creature) {
+    const byId = new Map(db.creatures.map((c) => [c.id, c]));
+
+    let start = creature;
+    const seenBack = new Set([start.id]);
+    for (;;) {
+      const prev = db.creatures.find((c) => c.evolvesToId === start.id);
+      if (!prev || seenBack.has(prev.id)) break;
+      start = prev;
+      seenBack.add(prev.id);
+    }
+
+    const chain = [start];
+    const seenForward = new Set([start.id]);
+    let current = start;
+    for (;;) {
+      if (!current.evolvesToId) break;
+      const next = byId.get(current.evolvesToId);
+      if (!next || seenForward.has(next.id)) break;
+      chain.push(next);
+      seenForward.add(next.id);
+      current = next;
+    }
+
+    return chain.length > 1 ? chain.map(summarize) : [];
+  }
+
   router.get('/', (req, res) => {
     const db = readDb();
     const { search, sort } = req.query;
@@ -75,7 +122,7 @@ function buildRouter(uploadsDir) {
     const key = req.params.idOrNumber;
     const creature = db.creatures.find((c) => String(c.id) === key || String(c.number) === key);
     if (!creature) return res.status(404).json({ error: 'Criatura não encontrada' });
-    res.json(creature);
+    res.json({ ...creature, evolutionChain: buildEvolutionChain(db, creature) });
   });
 
   router.post('/', (req, res) => {
@@ -91,8 +138,13 @@ function buildRouter(uploadsDir) {
       return res.status(400).json({ error: `Já existe uma criatura com o número ${number}` });
     }
 
+    const id = nextId(db);
+    const evolvesToId = parseEvolvesToId(body.evolvesToId);
+    const evoError = validateEvolvesTo(db, id, evolvesToId);
+    if (evoError) return res.status(400).json({ error: evoError });
+
     const creature = {
-      id: nextId(db),
+      id,
       number,
       name: String(body.name).trim(),
       types: toArray(body.types),
@@ -113,6 +165,7 @@ function buildRouter(uploadsDir) {
         speed: Number(body.stats?.speed) || 50,
       },
       imageUrl: null,
+      evolvesToId,
     };
 
     db.creatures.push(creature);
@@ -131,6 +184,13 @@ function buildRouter(uploadsDir) {
 
     if (db.creatures.some((c) => c.number === number && String(c.id) !== req.params.id)) {
       return res.status(400).json({ error: `Já existe uma criatura com o número ${number}` });
+    }
+
+    let evolvesToId = existing.evolvesToId ?? null;
+    if (body.evolvesToId !== undefined) {
+      evolvesToId = parseEvolvesToId(body.evolvesToId);
+      const evoError = validateEvolvesTo(db, existing.id, evolvesToId);
+      if (evoError) return res.status(400).json({ error: evoError });
     }
 
     const updated = {
@@ -156,6 +216,7 @@ function buildRouter(uploadsDir) {
             speed: Number(body.stats.speed) || existing.stats.speed,
           }
         : existing.stats,
+      evolvesToId,
     };
 
     db.creatures[idx] = updated;
@@ -169,6 +230,9 @@ function buildRouter(uploadsDir) {
     if (idx === -1) return res.status(404).json({ error: 'Criatura não encontrada' });
 
     const [removed] = db.creatures.splice(idx, 1);
+    db.creatures.forEach((c) => {
+      if (c.evolvesToId === removed.id) c.evolvesToId = null;
+    });
     writeDb(db);
 
     if (removed.imageUrl) {

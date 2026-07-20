@@ -56,7 +56,7 @@ export default function ListPage() {
   return (
     <div className="page list-page">
       <div className="hero">
-        <h1>Dex Uni</h1>
+        <h1>Unidex</h1>
         <SearchBar value={query} onChange={setQuery} />
       </div>
 

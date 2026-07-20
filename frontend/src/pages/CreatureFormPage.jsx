@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fetchCreature, createCreature, updateCreature } from '../api';
+import { fetchCreature, fetchCreatures, createCreature, updateCreature } from '../api';
 
 const emptyForm = {
   name: '',
@@ -14,6 +14,7 @@ const emptyForm = {
   abilities: '',
   weaknesses: '',
   attacks: '',
+  evolvesToId: '',
   hp: 50,
   attack: 50,
   defense: 50,
@@ -39,9 +40,14 @@ export default function CreatureFormPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
   const [creatureId, setCreatureId] = useState(null);
+  const [allCreatures, setAllCreatures] = useState([]);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchCreatures().then(setAllCreatures).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -60,6 +66,7 @@ export default function CreatureFormPage() {
           abilities: toCsv(c.abilities),
           weaknesses: toCsv(c.weaknesses),
           attacks: toCsv(c.attacks),
+          evolvesToId: c.evolvesToId != null ? String(c.evolvesToId) : '',
           hp: c.stats.hp,
           attack: c.stats.attack,
           defense: c.stats.defense,
@@ -92,6 +99,7 @@ export default function CreatureFormPage() {
       abilities: fromCsv(form.abilities),
       weaknesses: fromCsv(form.weaknesses),
       attacks: fromCsv(form.attacks),
+      evolvesToId: form.evolvesToId !== '' ? Number(form.evolvesToId) : null,
       stats: {
         hp: Number(form.hp),
         attack: Number(form.attack),
@@ -173,6 +181,19 @@ export default function CreatureFormPage() {
             onChange={(e) => update('genderless', e.target.checked)}
           />
           Criatura sem gênero
+        </label>
+        <label className="full">
+          Evolui para
+          <select value={form.evolvesToId} onChange={(e) => update('evolvesToId', e.target.value)}>
+            <option value="">Nenhuma (não evolui)</option>
+            {allCreatures
+              .filter((c) => c.id !== creatureId)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} (Nº {String(c.number).padStart(4, '0')})
+                </option>
+              ))}
+          </select>
         </label>
 
         <fieldset className="full">

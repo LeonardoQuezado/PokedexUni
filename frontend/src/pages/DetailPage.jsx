@@ -4,6 +4,7 @@ import CreatureImage from '../components/CreatureImage';
 import TypeBadge from '../components/TypeBadge';
 import StatBar from '../components/StatBar';
 import ImageUploader from '../components/ImageUploader';
+import EvolutionChain from '../components/EvolutionChain';
 import { fetchCreature, deleteCreature } from '../api';
 
 export default function DetailPage() {
@@ -118,6 +119,8 @@ export default function DetailPage() {
             <StatBar label="Def. Especial" value={creature.stats.spDefense} />
             <StatBar label="Velocidade" value={creature.stats.speed} />
           </div>
+
+          <EvolutionChain chain={creature.evolutionChain} currentId={creature.id} />
 
           <div className="detail-actions">
             <Link to={`/criatura/${creature.number}/editar`} className="btn-secondary">

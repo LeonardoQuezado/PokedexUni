@@ -12,7 +12,7 @@ export default function SearchBar({ value, onChange }) {
         />
         <span className="search-icon" aria-hidden="true">🔍</span>
       </div>
-      <p className="search-hint">Pesquise pelo nome ou número da criatura na Dex Uni.</p>
+      <p className="search-hint">Pesquise pelo nome ou número da criatura na Unidex.</p>
     </div>
   );
 }

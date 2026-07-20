@@ -375,6 +375,96 @@ a {
   border-radius: 6px;
 }
 
+.evolution-box {
+  background: repeating-linear-gradient(45deg, #3a3d44, #3a3d44 12px, #43464d 12px, #43464d 24px);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 24px 0;
+  color: #fff;
+}
+.evolution-title {
+  margin: 0 0 18px;
+  font-size: 1.2rem;
+  color: #fff;
+}
+.evolution-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.evolution-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.evolution-arrow {
+  font-size: 1.8rem;
+  color: #fff;
+  opacity: 0.8;
+  line-height: 1;
+}
+.evolution-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  text-decoration: none;
+  color: #fff;
+  width: 130px;
+}
+.evolution-thumb {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 10px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.evolution-item:hover .evolution-thumb {
+  transform: translateY(-3px);
+}
+.evolution-item.current .evolution-thumb {
+  border-color: var(--accent);
+}
+.evolution-thumb img,
+.evolution-thumb .creature-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  font-size: 1.6rem;
+}
+.evolution-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.evolution-number {
+  font-weight: 400;
+  opacity: 0.75;
+  font-size: 0.85rem;
+}
+.evolution-types {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .evolution-row {
+    flex-direction: column;
+  }
+  .evolution-arrow {
+    transform: rotate(90deg);
+  }
+}
+
 .detail-actions {
   display: flex;
   gap: 12px;
@@ -429,12 +519,14 @@ a {
   color: #444;
 }
 .creature-form input,
-.creature-form textarea {
+.creature-form textarea,
+.creature-form select {
   font-family: inherit;
   font-size: 1rem;
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
+  background: #fff;
 }
 .creature-form .full {
   grid-column: 1 / -1;

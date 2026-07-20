@@ -5,7 +5,7 @@ export default function Header() {
     <header className="site-header">
       <Link to="/" className="brand">
         <span className="brand-icon" aria-hidden="true">◉</span>
-        <span className="brand-text">Dex Uni</span>
+        <span className="brand-text">Unidex</span>
       </Link>
       <nav>
         <Link to="/nova">+ Nova criatura</Link>

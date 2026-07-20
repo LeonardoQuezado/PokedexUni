@@ -24,5 +24,5 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Dex Uni API rodando na porta ${PORT}`);
+  console.log(`Unidex API rodando na porta ${PORT}`);
 });

@@ -1,4 +1,4 @@
-# Dex Uni
+# Unidex
 
 Pokédex para criaturas personalizadas — todo o projeto roda em Docker.
 
@@ -10,7 +10,7 @@ Pré-requisito: Docker e Docker Compose instalados.
 docker compose up --build
 ```
 
-- Frontend (a Dex): http://localhost:8080
+- Frontend (a Unidex): http://localhost:8080
 - API: http://localhost:4000/api/creatures
 
 Os dados (criaturas e fotos enviadas) ficam salvos em volumes Docker (`backend_data` e
@@ -34,7 +34,7 @@ Dayon é "o primordial do mal", o esmagador de pedras, referência universal de 
 entre as criaturas — os ataques dele (e das outras) ficaram propositalmente em branco,
 prontos para você cadastrar pela tela de edição quando definir o moveset.
 
-Terrion, Nimbukin e Ignivox são criaturas de exemplo só para preencher a Dex inicial.
+Terrion, Nimbukin e Ignivox são criaturas de exemplo só para preencher a Unidex inicial.
 Edite ou apague-as à vontade pela própria interface.
 
 ## Adicionando/editando criaturas
@@ -51,6 +51,21 @@ Tudo pode ser feito pela interface, sem mexer em código:
 
 Tipos e fraquezas são livres — digite qualquer nome (ex: "Ogro", "Dumb") e a interface
 gera uma cor consistente automaticamente para o rótulo.
+
+## Evoluções
+
+Para montar uma linha evolutiva: primeiro cadastre cada criatura normalmente (ex: cria
+o "estágio 1" e depois o "estágio 2" como criaturas separadas). Depois, abra a tela de
+**Editar** do estágio anterior e escolha o próximo estágio no campo **"Evolui para"**.
+
+A partir daí, a seção "Evoluções" aparece automaticamente na página de detalhes de
+**todos** os estágios da linha (não só de um deles), mostrando a cadeia inteira com o
+estágio atual destacado. Algumas regras:
+
+- Uma criatura só pode ter **um** próximo estágio, e só pode ser o "próximo estágio" de
+  **uma** criatura anterior (sem bifurcação nem ciclos).
+- Apagar uma criatura do meio da cadeia quebra o link automaticamente, sem deixar
+  referência quebrada.
 
 ## Estrutura do projeto
 
