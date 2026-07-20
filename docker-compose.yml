@@ -7,6 +7,8 @@ services:
       - PORT=4000
       - DATA_DIR=/app/data
       - UPLOADS_DIR=/app/uploads
+      - JWT_SECRET=troque-este-segredo-para-algo-aleatorio-e-privado
+      - COOKIE_SECURE=false
     volumes:
       - backend_data:/app/data
       - backend_uploads:/app/uploads

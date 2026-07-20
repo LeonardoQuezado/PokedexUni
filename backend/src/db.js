@@ -18,11 +18,31 @@ function ensureDb() {
 function readDb() {
   ensureDb();
   const raw = fs.readFileSync(DB_FILE, 'utf-8');
-  return JSON.parse(raw);
+  const data = JSON.parse(raw);
+  if (!Array.isArray(data.creatures)) data.creatures = [];
+  if (!Array.isArray(data.users)) data.users = [];
+  if (!Array.isArray(data.ownedCreatures)) data.ownedCreatures = [];
+  return data;
 }
 
 function writeDb(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-module.exports = { readDb, writeDb, DB_FILE, DATA_DIR };
+function enrichOwnedCreatures(db, userId) {
+  return db.ownedCreatures
+    .filter((oc) => oc.userId === userId)
+    .map((oc) => {
+      const species = db.creatures.find((c) => c.id === oc.speciesId);
+      return {
+        id: oc.id,
+        speciesId: oc.speciesId,
+        name: species?.name || 'Desconhecido',
+        number: species?.number ?? null,
+        types: species?.types || [],
+        imageUrl: species?.imageUrl || null,
+      };
+    });
+}
+
+module.exports = { readDb, writeDb, enrichOwnedCreatures, DB_FILE, DATA_DIR };

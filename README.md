@@ -67,14 +67,36 @@ estágio atual destacado. Algumas regras:
 - Apagar uma criatura do meio da cadeia quebra o link automaticamente, sem deixar
   referência quebrada.
 
+## Contas e Arena
+
+- **Criar conta** (cabeçalho): usuário, e-mail e senha. Ainda não mandamos e-mail de
+  verdade — ao cadastrar, o link de confirmação aparece direto na tela (e pode ser
+  gerado de novo na tela de login, caso se perca). Depois de confirmar, é só entrar.
+- Toda conta nova ganha automaticamente um **Dayon (Nº 0001)** — a estrutura já está
+  pronta para no futuro dar suporte a "capturar" outras criaturas, mas esse mecanismo
+  ainda não existe.
+- **Arena** (botão roxo no cabeçalho, só aparece logado): mostra quem mais está com a
+  Arena aberta agora, em tempo real (via WebSocket), com botão **Desafiar**. A pessoa
+  desafiada recebe um convite na hora para aceitar ou recusar.
+- Ao aceitar, os dois caem numa **sala compartilhada**: foto de cada jogador (ou a
+  inicial do nome, se não tiver foto) em cada ponta, com a criatura de cada um embaixo.
+  A batalha em si (turnos, dano, etc.) é combinada entre vocês — o sistema não simula
+  o combate.
+- O mapa da Arena hoje é um placeholder roxo original (gerado em SVG). Quando você
+  mandar o arquivo de imagem definitivo, é só trocar `ArenaBackground.jsx` pela imagem.
+
+Variáveis de ambiente relevantes (já com valores padrão em `docker-compose.yml`):
+`JWT_SECRET` (assina a sessão de login) e `COOKIE_SECURE` (deixe `false` em `http://localhost`;
+mude para `true` só se um dia servir a Unidex com HTTPS de verdade).
+
 ## Estrutura do projeto
 
 ```
 backend/    API em Node.js/Express. Dados guardados em JSON (backend/data/db.json,
             criado a partir de backend/seed/seed.json no primeiro start). Uploads em
-            backend/uploads/.
-frontend/   React + Vite. Em produção é servido por Nginx, que também repassa /api e
-            /uploads para o backend (mesma origem, sem CORS).
+            backend/uploads/. Socket.io no mesmo servidor HTTP para a Arena.
+frontend/   React + Vite. Em produção é servido por Nginx, que também repassa /api,
+            /uploads e /socket.io para o backend (mesma origem, sem CORS).
 docker-compose.yml   Sobe backend (porta 4000) e frontend (porta 8080).
 ```
 
