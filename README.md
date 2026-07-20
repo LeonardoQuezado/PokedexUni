@@ -46,7 +46,7 @@ Tudo pode ser feito pela interface, sem mexer em código:
   Especial/Def. Especial/Velocidade).
 - **Editar** (na página de detalhes): altera qualquer campo de uma criatura existente.
 - **Adicionar / trocar foto** (na página de detalhes): envia uma imagem (PNG, JPG, WEBP
-  ou GIF, até 5 MB) para a criatura. Enquanto não há foto, aparece um retrato provisório
+  ou GIF, até 10 MB) para a criatura. Enquanto não há foto, aparece um retrato provisório
   com a inicial do nome.
 
 Tipos e fraquezas são livres — digite qualquer nome (ex: "Ogro", "Dumb") e a interface

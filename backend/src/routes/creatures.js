@@ -17,7 +17,7 @@ function buildRouter(uploadsDir) {
 
   const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       if (/^image\/(png|jpe?g|webp|gif)$/.test(file.mimetype)) cb(null, true);
       else cb(new Error('Formato de imagem inválido. Use PNG, JPG, WEBP ou GIF.'));
@@ -185,7 +185,12 @@ function buildRouter(uploadsDir) {
     if (idx === -1) return res.status(404).json({ error: 'Criatura não encontrada' });
 
     upload.single('image')(req, res, (err) => {
-      if (err) return res.status(400).json({ error: err.message });
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Imagem muito grande. O limite é 10 MB.' });
+        }
+        return res.status(400).json({ error: err.message });
+      }
       if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada' });
 
       const dbNow = readDb();
