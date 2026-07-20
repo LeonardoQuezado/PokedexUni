@@ -102,8 +102,15 @@ export default function DetailPage() {
           <h2>Ataques</h2>
           {creature.attacks?.length ? (
             <ul className="attack-list">
-              {creature.attacks.map((a, i) => (
-                <li key={i}>{a}</li>
+              {creature.attacks.map((a) => (
+                <li key={a.id}>
+                  <strong>{a.name}</strong>
+                  {a.type && <TypeBadge type={a.type} />}
+                  <span className="muted">
+                    {' '}
+                    · {a.category === 'especial' ? 'Especial' : 'Físico'} · Poder {a.power} · Precisão {a.accuracy}%
+                  </span>
+                </li>
               ))}
             </ul>
           ) : (

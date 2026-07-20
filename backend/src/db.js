@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { normalizeAttacks } = require('./attacks');
 
 const SEED_FILE = path.join(__dirname, '..', 'seed', 'seed.json');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -40,7 +41,10 @@ function enrichOwnedCreatures(db, userId) {
         name: species?.name || 'Desconhecido',
         number: species?.number ?? null,
         types: species?.types || [],
+        weaknesses: species?.weaknesses || [],
         imageUrl: species?.imageUrl || null,
+        stats: species?.stats || { hp: 50, attack: 50, defense: 50, spAttack: 50, spDefense: 50, speed: 50 },
+        attacks: normalizeAttacks(species?.attacks),
       };
     });
 }

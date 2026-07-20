@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { readDb, writeDb } = require('../db');
+const { normalizeAttacks } = require('../attacks');
 
 function buildRouter(uploadsDir) {
   const router = express.Router();
@@ -56,6 +57,10 @@ function buildRouter(uploadsDir) {
     return { id: c.id, number: c.number, name: c.name, types: c.types, imageUrl: c.imageUrl };
   }
 
+  function withNormalizedAttacks(c) {
+    return { ...c, attacks: normalizeAttacks(c.attacks) };
+  }
+
   function buildEvolutionChain(db, creature) {
     const byId = new Map(db.creatures.map((c) => [c.id, c]));
 
@@ -105,7 +110,7 @@ function buildRouter(uploadsDir) {
       return a.number - b.number;
     });
 
-    res.json(list);
+    res.json(list.map(withNormalizedAttacks));
   });
 
   router.get('/random', (req, res) => {
@@ -114,7 +119,7 @@ function buildRouter(uploadsDir) {
       return res.status(404).json({ error: 'Nenhuma criatura cadastrada ainda' });
     }
     const creature = db.creatures[Math.floor(Math.random() * db.creatures.length)];
-    res.json(creature);
+    res.json(withNormalizedAttacks(creature));
   });
 
   router.get('/:idOrNumber', (req, res) => {
@@ -122,7 +127,7 @@ function buildRouter(uploadsDir) {
     const key = req.params.idOrNumber;
     const creature = db.creatures.find((c) => String(c.id) === key || String(c.number) === key);
     if (!creature) return res.status(404).json({ error: 'Criatura não encontrada' });
-    res.json({ ...creature, evolutionChain: buildEvolutionChain(db, creature) });
+    res.json({ ...withNormalizedAttacks(creature), evolutionChain: buildEvolutionChain(db, creature) });
   });
 
   router.post('/', (req, res) => {
@@ -155,7 +160,7 @@ function buildRouter(uploadsDir) {
       genderless: !!body.genderless,
       abilities: toArray(body.abilities),
       weaknesses: toArray(body.weaknesses),
-      attacks: toArray(body.attacks),
+      attacks: normalizeAttacks(body.attacks),
       stats: {
         hp: Number(body.stats?.hp) || 50,
         attack: Number(body.stats?.attack) || 50,
@@ -205,7 +210,7 @@ function buildRouter(uploadsDir) {
       genderless: body.genderless !== undefined ? !!body.genderless : existing.genderless,
       abilities: body.abilities !== undefined ? toArray(body.abilities) : existing.abilities,
       weaknesses: body.weaknesses !== undefined ? toArray(body.weaknesses) : existing.weaknesses,
-      attacks: body.attacks !== undefined ? toArray(body.attacks) : existing.attacks,
+      attacks: body.attacks !== undefined ? normalizeAttacks(body.attacks) : normalizeAttacks(existing.attacks),
       stats: body.stats
         ? {
             hp: Number(body.stats.hp) || existing.stats.hp,

@@ -78,16 +78,33 @@ estágio atual destacado. Algumas regras:
 - **Arena** (botão roxo no cabeçalho, só aparece logado): mostra quem mais está com a
   Arena aberta agora, em tempo real (via WebSocket), com botão **Desafiar**. A pessoa
   desafiada recebe um convite na hora para aceitar ou recusar.
-- Ao aceitar, os dois caem numa **sala compartilhada**: foto de cada jogador (ou a
-  inicial do nome, se não tiver foto) em cada ponta, com a criatura de cada um embaixo.
-  A batalha em si (turnos, dano, etc.) é combinada entre vocês — o sistema não simula
-  o combate.
+- Ao aceitar, os dois caem numa **sala de batalha** com o combate real: HP, turnos e
+  os 4 ataques de cada um.
 - O mapa da Arena hoje é um placeholder roxo original (gerado em SVG). Quando você
   mandar o arquivo de imagem definitivo, é só trocar `ArenaBackground.jsx` pela imagem.
 
 Variáveis de ambiente relevantes (já com valores padrão em `docker-compose.yml`):
 `JWT_SECRET` (assina a sessão de login) e `COOKIE_SECURE` (deixe `false` em `http://localhost`;
 mude para `true` só se um dia servir a Unidex com HTTPS de verdade).
+
+## Ataques e combate
+
+Na tela de **Editar** de uma criatura, cada ataque tem: nome, tipo (livre, igual aos
+tipos da criatura), categoria (Físico ou Especial), Poder e Precisão. Máximo de 4
+ataques por criatura.
+
+Na batalha (dentro da sala da Arena):
+
+- Os dois jogadores escolhem um ataque por turno ao mesmo tempo; quem tem mais
+  **Velocidade** resolve primeiro.
+- Dano = Poder do ataque × (Ataque ou Atq. Especial de quem bate ÷ Defesa ou Def.
+  Especial de quem apanha), com uma variação aleatória de 85%-100%. Se o tipo do
+  ataque bater com uma das **Fraquezas** cadastradas no alvo, o dano sobe 1.5x.
+- A Precisão do ataque é a chance de acertar — errar não gasta o efeito, só o uso.
+- Cada ataque só pode ser usado **3 vezes por combate**. Se os 4 se esgotarem, libera
+  um golpe de emergência ("Investida Desesperada", uso ilimitado, dano baixo) pra
+  batalha não travar.
+- Ataques de status (paralisar, queimar, etc.) ainda não existem — fica para depois.
 
 ## Estrutura do projeto
 

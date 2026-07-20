@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchCreature, fetchCreatures, createCreature, updateCreature } from '../api';
 
+const MAX_ATTACKS = 4;
+
 const emptyForm = {
   name: '',
   number: '',
@@ -13,7 +15,7 @@ const emptyForm = {
   genderless: false,
   abilities: '',
   weaknesses: '',
-  attacks: '',
+  attacks: [],
   evolvesToId: '',
   hp: 50,
   attack: 50,
@@ -22,6 +24,10 @@ const emptyForm = {
   spDefense: 50,
   speed: 50,
 };
+
+function emptyAttack() {
+  return { name: '', type: '', category: 'fisico', power: 50, accuracy: 100 };
+}
 
 function toCsv(arr) {
   return (arr || []).join(', ');
@@ -65,7 +71,14 @@ export default function CreatureFormPage() {
           genderless: !!c.genderless,
           abilities: toCsv(c.abilities),
           weaknesses: toCsv(c.weaknesses),
-          attacks: toCsv(c.attacks),
+          attacks: (c.attacks || []).map((a) => ({
+            id: a.id,
+            name: a.name,
+            type: a.type || '',
+            category: a.category === 'especial' ? 'especial' : 'fisico',
+            power: a.power,
+            accuracy: a.accuracy,
+          })),
           evolvesToId: c.evolvesToId != null ? String(c.evolvesToId) : '',
           hp: c.stats.hp,
           attack: c.stats.attack,
@@ -83,6 +96,22 @@ export default function CreatureFormPage() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  function updateAttack(index, field, value) {
+    setForm((f) => {
+      const attacks = [...f.attacks];
+      attacks[index] = { ...attacks[index], [field]: value };
+      return { ...f, attacks };
+    });
+  }
+
+  function addAttack() {
+    setForm((f) => (f.attacks.length >= MAX_ATTACKS ? f : { ...f, attacks: [...f.attacks, emptyAttack()] }));
+  }
+
+  function removeAttack(index) {
+    setForm((f) => ({ ...f, attacks: f.attacks.filter((_, i) => i !== index) }));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSaving(true);
@@ -98,7 +127,16 @@ export default function CreatureFormPage() {
       genderless: form.genderless,
       abilities: fromCsv(form.abilities),
       weaknesses: fromCsv(form.weaknesses),
-      attacks: fromCsv(form.attacks),
+      attacks: form.attacks
+        .filter((a) => a.name && a.name.trim())
+        .map((a) => ({
+          ...(a.id != null ? { id: a.id } : {}),
+          name: a.name.trim(),
+          type: a.type ? a.type.trim() : null,
+          category: a.category === 'especial' ? 'especial' : 'fisico',
+          power: Number(a.power) || 50,
+          accuracy: Number(a.accuracy) || 100,
+        })),
       evolvesToId: form.evolvesToId !== '' ? Number(form.evolvesToId) : null,
       stats: {
         hp: Number(form.hp),
@@ -166,14 +204,6 @@ export default function CreatureFormPage() {
           Fraquezas (separadas por vírgula)
           <input value={form.weaknesses} onChange={(e) => update('weaknesses', e.target.value)} />
         </label>
-        <label className="full">
-          Ataques (separados por vírgula)
-          <input
-            placeholder="Deixe em branco se ainda não tiver ataques definidos"
-            value={form.attacks}
-            onChange={(e) => update('attacks', e.target.value)}
-          />
-        </label>
         <label className="checkbox-label">
           <input
             type="checkbox"
@@ -224,6 +254,54 @@ export default function CreatureFormPage() {
               <input type="number" value={form.speed} onChange={(e) => update('speed', e.target.value)} />
             </label>
           </div>
+        </fieldset>
+
+        <fieldset className="full">
+          <legend>Ataques (máx. {MAX_ATTACKS})</legend>
+          {form.attacks.length === 0 && <p className="muted">Nenhum ataque ainda.</p>}
+          {form.attacks.map((a, i) => (
+            <div className="attack-editor-row" key={i}>
+              <input
+                placeholder="Nome"
+                value={a.name}
+                onChange={(e) => updateAttack(i, 'name', e.target.value)}
+              />
+              <input
+                placeholder="Tipo (opcional)"
+                value={a.type}
+                onChange={(e) => updateAttack(i, 'type', e.target.value)}
+              />
+              <select value={a.category} onChange={(e) => updateAttack(i, 'category', e.target.value)}>
+                <option value="fisico">Físico</option>
+                <option value="especial">Especial</option>
+              </select>
+              <input
+                type="number"
+                placeholder="Poder"
+                value={a.power}
+                onChange={(e) => updateAttack(i, 'power', e.target.value)}
+              />
+              <input
+                type="number"
+                placeholder="Precisão %"
+                value={a.accuracy}
+                onChange={(e) => updateAttack(i, 'accuracy', e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn-danger btn-remove-attack"
+                onClick={() => removeAttack(i)}
+              >
+                Remover
+              </button>
+            </div>
+          ))}
+          {form.attacks.length < MAX_ATTACKS && (
+            <button type="button" className="btn-secondary" onClick={addAttack}>
+              + Adicionar ataque
+            </button>
+          )}
+          <p className="hint">Cada ataque pode ser usado 3 vezes por combate na Arena.</p>
         </fieldset>
 
         <div className="form-actions full">

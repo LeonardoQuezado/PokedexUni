@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getSocket } from '../socket';
+import { useSocket } from '../context/SocketContext';
 import ArenaBackground from '../components/ArenaBackground';
 
 export default function ArenaPage() {
   const { user, loading } = useAuth();
+  const socket = useSocket();
   const navigate = useNavigate();
   const [online, setOnline] = useState([]);
   const [incoming, setIncoming] = useState(null);
@@ -13,10 +14,8 @@ export default function ArenaPage() {
   const [notice, setNotice] = useState(null);
 
   useEffect(() => {
-    if (loading || !user) return undefined;
+    if (!socket) return undefined;
 
-    const socket = getSocket();
-    socket.connect();
     socket.emit('arena:join');
 
     function handleOnline(list) {
@@ -31,7 +30,7 @@ export default function ArenaPage() {
       setTimeout(() => setNotice(null), 4000);
     }
     function handleBattleStart(payload) {
-      navigate(`/arena/batalha/${payload.roomId}`, { state: { players: payload.players } });
+      navigate(`/arena/batalha/${payload.roomId}`);
     }
 
     socket.on('arena:online', handleOnline);
@@ -45,18 +44,17 @@ export default function ArenaPage() {
       socket.off('challenge:received', handleChallenge);
       socket.off('challenge:declined', handleDeclined);
       socket.off('battle:start', handleBattleStart);
-      socket.disconnect();
     };
-  }, [loading, user, navigate]);
+  }, [socket, navigate]);
 
   function sendChallenge(targetId) {
-    getSocket().emit('challenge:send', targetId);
+    socket?.emit('challenge:send', targetId);
     setSentTo(targetId);
   }
 
   function respond(accept) {
     if (!incoming) return;
-    getSocket().emit('challenge:respond', { challengeId: incoming.challengeId, accept });
+    socket?.emit('challenge:respond', { challengeId: incoming.challengeId, accept });
     setIncoming(null);
   }
 
