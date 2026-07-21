@@ -1,4 +1,4 @@
-# Unidex
+# Dayonmon
 
 Pokédex para criaturas personalizadas — todo o projeto roda em Docker.
 
@@ -10,7 +10,8 @@ Pré-requisito: Docker e Docker Compose instalados.
 docker compose up --build
 ```
 
-- Frontend (a Unidex): http://localhost:8080
+- Frontend (a Dayonmon): http://localhost:8080 — a primeira tela é sempre login/cadastro,
+  não dá pra ver nada sem entrar.
 - API: http://localhost:4000/api/creatures
 
 Os dados (criaturas e fotos enviadas) ficam salvos em volumes Docker (`backend_data` e
@@ -34,7 +35,7 @@ Dayon é "o primordial do mal", o esmagador de pedras, referência universal de 
 entre as criaturas — os ataques dele (e das outras) ficaram propositalmente em branco,
 prontos para você cadastrar pela tela de edição quando definir o moveset.
 
-Terrion, Nimbukin e Ignivox são criaturas de exemplo só para preencher a Unidex inicial.
+Terrion, Nimbukin e Ignivox são criaturas de exemplo só para preencher a Dayonmon inicial.
 Edite ou apague-as à vontade pela própria interface.
 
 ## Adicionando/editando criaturas
@@ -67,10 +68,25 @@ estágio atual destacado. Algumas regras:
 - Apagar uma criatura do meio da cadeia quebra o link automaticamente, sem deixar
   referência quebrada.
 
+## Login obrigatório e Home
+
+Toda a Dayonmon fica atrás de login — sem conta, a única coisa acessível é a tela de
+**Entrar**/**Cadastrar**. Depois de logar, a página inicial (`/`) vira um painel com:
+
+- **Fundo em slideshow**: cicla pelas fotos das criaturas que já têm foto cadastrada
+  (busca via `/api/creatures`). Sem nenhuma foto ainda, mostra um gradiente roxo de
+  fundo em vez de tela em branco.
+- **Acesso rápido**: atalhos para Pokédex, Arena, Aventura e perfil.
+- **Novidades**: lista de patch notes (hoje um array fixo em `HomePage.jsx`, refletindo
+  o histórico real de versões do projeto — dá pra editar/adicionar entradas ali mesmo).
+
+A Pokédex (busca, grid, detalhes) mudou de lugar: agora fica em **`/dex`**, não mais na
+raiz do site.
+
 ## Contas e Arena
 
-- **Criar conta** (cabeçalho): usuário, e-mail e senha. Ainda não mandamos e-mail de
-  verdade — ao cadastrar, o link de confirmação aparece direto na tela (e pode ser
+- **Criar conta** (tela de cadastro): usuário, e-mail e senha. Ainda não mandamos e-mail
+  de verdade — ao cadastrar, o link de confirmação aparece direto na tela (e pode ser
   gerado de novo na tela de login, caso se perca). Depois de confirmar, é só entrar.
 - Toda conta nova ganha automaticamente um **Dayon (Nº 0001)** e **10 Dayonballs**
   para capturar outros na Aventura (veja abaixo).
@@ -84,7 +100,7 @@ estágio atual destacado. Algumas regras:
 
 Variáveis de ambiente relevantes (já com valores padrão em `docker-compose.yml`):
 `JWT_SECRET` (assina a sessão de login) e `COOKIE_SECURE` (deixe `false` em `http://localhost`;
-mude para `true` só se um dia servir a Unidex com HTTPS de verdade).
+mude para `true` só se um dia servir a Dayonmon com HTTPS de verdade).
 
 ## Ataques e combate
 

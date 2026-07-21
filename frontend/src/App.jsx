@@ -2,6 +2,8 @@ import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import Header from './components/Header';
+import RequireAuth from './components/RequireAuth';
+import HomePage from './pages/HomePage';
 import ListPage from './pages/ListPage';
 import DetailPage from './pages/DetailPage';
 import CreatureFormPage from './pages/CreatureFormPage';
@@ -23,19 +25,98 @@ export default function App() {
           <Header />
           <main>
             <Routes>
-              <Route path="/" element={<ListPage />} />
-              <Route path="/nova" element={<CreatureFormPage />} />
-              <Route path="/criatura/:idOrNumber" element={<DetailPage />} />
-              <Route path="/criatura/:idOrNumber/editar" element={<CreatureFormPage />} />
               <Route path="/cadastrar" element={<RegisterPage />} />
               <Route path="/entrar" element={<LoginPage />} />
               <Route path="/verificar" element={<VerifyEmailPage />} />
-              <Route path="/perfil" element={<ProfilePage />} />
-              <Route path="/arena" element={<ArenaPage />} />
-              <Route path="/arena/batalha/:roomId" element={<BattleRoomPage />} />
-              <Route path="/aventura" element={<AdventurePage />} />
-              <Route path="/aventura/bloco-d" element={<ExploreBlockDPage />} />
-              <Route path="/aventura/batalha/:roomId" element={<WildBattlePage />} />
+
+              <Route
+                path="/"
+                element={
+                  <RequireAuth>
+                    <HomePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/dex"
+                element={
+                  <RequireAuth>
+                    <ListPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/nova"
+                element={
+                  <RequireAuth>
+                    <CreatureFormPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/criatura/:idOrNumber"
+                element={
+                  <RequireAuth>
+                    <DetailPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/criatura/:idOrNumber/editar"
+                element={
+                  <RequireAuth>
+                    <CreatureFormPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/perfil"
+                element={
+                  <RequireAuth>
+                    <ProfilePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/arena"
+                element={
+                  <RequireAuth>
+                    <ArenaPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/arena/batalha/:roomId"
+                element={
+                  <RequireAuth>
+                    <BattleRoomPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/aventura"
+                element={
+                  <RequireAuth>
+                    <AdventurePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/aventura/bloco-d"
+                element={
+                  <RequireAuth>
+                    <ExploreBlockDPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/aventura/batalha/:roomId"
+                element={
+                  <RequireAuth>
+                    <WildBattlePage />
+                  </RequireAuth>
+                }
+              />
             </Routes>
           </main>
         </div>

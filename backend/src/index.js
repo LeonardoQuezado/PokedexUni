@@ -35,5 +35,5 @@ const server = http.createServer(app);
 attachSocket(server);
 
 server.listen(PORT, () => {
-  console.log(`Unidex API rodando na porta ${PORT}`);
+  console.log(`Dayonmon API rodando na porta ${PORT}`);
 });

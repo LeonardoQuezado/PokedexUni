@@ -7,31 +7,30 @@ export default function Header() {
 
   async function handleLogout() {
     await logout();
-    navigate('/');
+    navigate('/entrar');
   }
 
   return (
     <header className="site-header">
       <Link to="/" className="brand">
         <span className="brand-icon" aria-hidden="true">◉</span>
-        <span className="brand-text">Unidex</span>
+        <span className="brand-text">Dayonmon</span>
       </Link>
       <nav className="header-nav">
-        <Link to="/nova" className="btn-nova">
-          + Nova criatura
-        </Link>
         {user && (
-          <Link to="/arena" className="btn-arena">
-            ⚔️ Arena
-          </Link>
-        )}
-        {user && (
-          <Link to="/aventura" className="btn-adventure">
-            🗺️ Aventura
-          </Link>
-        )}
-        {user ? (
           <>
+            <Link to="/dex" className="header-link">
+              Pokédex
+            </Link>
+            <Link to="/nova" className="btn-nova">
+              + Nova criatura
+            </Link>
+            <Link to="/arena" className="btn-arena">
+              ⚔️ Arena
+            </Link>
+            <Link to="/aventura" className="btn-adventure">
+              🗺️ Aventura
+            </Link>
             <Link to="/perfil" className="header-user">
               {user.username}
             </Link>
@@ -39,7 +38,8 @@ export default function Header() {
               Sair
             </button>
           </>
-        ) : (
+        )}
+        {!user && (
           <>
             <Link to="/entrar" className="header-link">
               Entrar

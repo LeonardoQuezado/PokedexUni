@@ -74,7 +74,7 @@ export default function ProfilePage() {
       <div className="badge-row">
         {ownedCreatures.length === 0 && <span className="muted">Nenhuma criatura ainda.</span>}
         {ownedCreatures.map((c) => (
-          <span key={c.id} className="type-badge" style={{ backgroundColor: '#2894d1' }}>
+          <span key={c.id} className="type-badge" style={{ backgroundColor: '#a855f7' }}>
             {c.name} (Nº {String(c.number).padStart(4, '0')})
           </span>
         ))}

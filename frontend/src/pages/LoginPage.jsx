@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { resendVerification } from '../api';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/';
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -21,7 +23,7 @@ export default function LoginPage() {
     setSaving(true);
     try {
       await login(identifier, password);
-      navigate('/');
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err.message);
       if (err.needsVerification) setNeedsVerification(true);
