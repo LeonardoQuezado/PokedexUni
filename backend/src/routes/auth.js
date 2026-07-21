@@ -53,6 +53,7 @@ function buildRouter() {
       verified: false,
       verificationToken: crypto.randomBytes(24).toString('hex'),
       photoUrl: null,
+      dayonballs: 10,
       createdAt: new Date().toISOString(),
     };
     db.users.push(user);

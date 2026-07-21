@@ -23,6 +23,9 @@ function readDb() {
   if (!Array.isArray(data.creatures)) data.creatures = [];
   if (!Array.isArray(data.users)) data.users = [];
   if (!Array.isArray(data.ownedCreatures)) data.ownedCreatures = [];
+  data.users.forEach((u) => {
+    if (typeof u.dayonballs !== 'number') u.dayonballs = 10;
+  });
   return data;
 }
 

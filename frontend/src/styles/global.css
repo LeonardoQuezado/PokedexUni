@@ -73,6 +73,15 @@ a {
   font-weight: 600;
   font-size: 0.9rem;
 }
+.btn-adventure {
+  color: #fff;
+  background: #15803d;
+  padding: 8px 14px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
 .header-link {
   color: var(--text);
   text-decoration: none;
@@ -928,6 +937,22 @@ fieldset + fieldset {
   text-align: center;
 }
 
+.wild-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.btn-move-ball {
+  border-color: #dc2626;
+}
+.btn-move-ball:hover:not(:disabled) {
+  border-color: #dc2626;
+}
+.btn-move-run {
+  border-color: #94a3b8;
+}
+
 .battle-over {
   text-align: center;
   padding: 20px 0;
@@ -953,4 +978,95 @@ fieldset + fieldset {
     width: 40px;
     height: 40px;
   }
+}
+
+/* Adventure world map */
+.adventure-page {
+  padding: 28px 32px 60px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.world-map {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 20px 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+.world-map-img {
+  width: 100%;
+  display: block;
+}
+.world-map-spot {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  text-decoration: none;
+}
+.world-map-spot.available:hover,
+.world-map-spot.available:focus-visible {
+  border-color: #a855f7;
+  background-color: rgba(168, 85, 247, 0.18);
+}
+.world-map-spot.disabled {
+  cursor: not-allowed;
+}
+.world-map-spot-label {
+  background: rgba(20, 10, 30, 0.75);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+.world-map-spot:hover .world-map-spot-label,
+.world-map-spot:focus-visible .world-map-spot-label {
+  opacity: 1;
+}
+
+/* Exploration grid */
+.explore-page {
+  padding: 28px 32px 60px;
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+}
+.explore-grid {
+  position: relative;
+  margin: 20px auto;
+  display: grid;
+  grid-template-columns: repeat(20, 30px);
+  border: 4px solid #2f5d34;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.explore-tile {
+  width: 30px;
+  height: 30px;
+}
+.explore-tile-a {
+  background: #7bc96f;
+}
+.explore-tile-b {
+  background: #6cb860;
+}
+.explore-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  transition: transform 0.1s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }

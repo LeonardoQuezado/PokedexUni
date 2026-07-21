@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { uploadUserPhoto } from '../api';
 
@@ -6,6 +6,10 @@ export default function ProfilePage() {
   const { user, ownedCreatures, refresh, loading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -59,6 +63,10 @@ export default function ProfilePage() {
         <div>
           <span className="info-label">E-mail</span>
           <span className="info-value">{user.email}</span>
+        </div>
+        <div>
+          <span className="info-label">Dayonballs</span>
+          <span className="info-value">🔴 {user.dayonballs ?? 0}</span>
         </div>
       </div>
 

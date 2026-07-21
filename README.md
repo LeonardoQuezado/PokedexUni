@@ -72,9 +72,8 @@ estágio atual destacado. Algumas regras:
 - **Criar conta** (cabeçalho): usuário, e-mail e senha. Ainda não mandamos e-mail de
   verdade — ao cadastrar, o link de confirmação aparece direto na tela (e pode ser
   gerado de novo na tela de login, caso se perca). Depois de confirmar, é só entrar.
-- Toda conta nova ganha automaticamente um **Dayon (Nº 0001)** — a estrutura já está
-  pronta para no futuro dar suporte a "capturar" outras criaturas, mas esse mecanismo
-  ainda não existe.
+- Toda conta nova ganha automaticamente um **Dayon (Nº 0001)** e **10 Dayonballs**
+  para capturar outros na Aventura (veja abaixo).
 - **Arena** (botão roxo no cabeçalho, só aparece logado): mostra quem mais está com a
   Arena aberta agora, em tempo real (via WebSocket), com botão **Desafiar**. A pessoa
   desafiada recebe um convite na hora para aceitar ou recusar.
@@ -105,6 +104,29 @@ Na batalha (dentro da sala da Arena):
   um golpe de emergência ("Investida Desesperada", uso ilimitado, dano baixo) pra
   batalha não travar.
 - Ataques de status (paralisar, queimar, etc.) ainda não existem — fica para depois.
+
+## Aventura
+
+Botão verde **Aventura** no cabeçalho (só aparece logado) abre um mapa-múndi
+(`frontend/public/aventura/mapa-campus.jpg`) com locais que podem ser explorados.
+Hoje só o **Bloco D** está disponível — passe o mouse para ver o contorno roxo, clique
+para entrar.
+
+Dentro do Bloco D é uma grade de exploração 20×20 (tiles de 30px, 600×600px no total).
+Use as **setas do teclado ou WASD** para andar. A cada passo há **5% de chance** de um
+Dayon selvagem aparecer, abrindo uma batalha:
+
+- **Lutar**: usa os ataques normais (mesmas regras da Arena).
+- **Dayonball**: tenta capturar. Chance = 30% base + até 20% extra conforme o HP do
+  Dayon selvagem cai (quanto mais fraco, mais fácil capturar). Cada conta começa com
+  10 bolas; uma tentativa falha ainda consome a bola e dá a vez pro selvagem atacar.
+- **Fugir**: sai do encontro sem gastar Dayonball.
+
+Capturar adiciona o Dayon à sua coleção (visível em **Meu perfil**). Vencer sem capturar
+não dá nada — o selvagem "foge assustado".
+
+Para adicionar novos locais no mapa depois: edite o array `LOCATIONS` em
+`frontend/src/pages/AdventurePage.jsx` (posição em % sobre a imagem + `available: true`).
 
 ## Estrutura do projeto
 

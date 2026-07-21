@@ -37,6 +37,7 @@ function publicUser(user) {
     email: user.email,
     verified: user.verified,
     photoUrl: user.photoUrl || null,
+    dayonballs: user.dayonballs ?? 10,
   };
 }
 

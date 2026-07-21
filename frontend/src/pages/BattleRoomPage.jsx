@@ -3,41 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import ArenaBackground from '../components/ArenaBackground';
-
-function BattleSide({ player }) {
-  const pct = player.maxHp > 0 ? Math.max(0, Math.round((player.hp / player.maxHp) * 100)) : 0;
-
-  return (
-    <div className="battle-player">
-      {player.photoUrl ? (
-        <img src={player.photoUrl} alt={player.username} className="battle-player-photo" />
-      ) : (
-        <div className="battle-player-photo battle-player-photo-placeholder">
-          {player.username.charAt(0).toUpperCase()}
-        </div>
-      )}
-      <span className="battle-player-name">{player.username}</span>
-      <div className="battle-hp-track">
-        <div className="battle-hp-fill" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="battle-hp-text">
-        {player.hp} / {player.maxHp} PS
-      </span>
-      {player.creature && (
-        <div className="battle-creature">
-          {player.creature.imageUrl ? (
-            <img src={player.creature.imageUrl} alt={player.creature.name} className="battle-creature-photo" />
-          ) : (
-            <div className="battle-creature-photo battle-creature-photo-placeholder">
-              {player.creature.name.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <span className="battle-creature-name">{player.creature.name}</span>
-        </div>
-      )}
-    </div>
-  );
-}
+import BattleSide from '../components/BattleSide';
+import MoveGrid from '../components/MoveGrid';
 
 export default function BattleRoomPage() {
   const { roomId } = useParams();
@@ -76,7 +43,6 @@ export default function BattleRoomPage() {
   const isOver = battle.status === 'finished';
   const iWon = isOver && battle.winnerId === user.id;
   const draw = isOver && !battle.winnerId;
-  const showStruggle = me.creature.attacks.every((a) => (me.usesLeft[a.id] ?? 0) <= 0);
 
   return (
     <div className="page battle-room-page">
@@ -90,7 +56,9 @@ export default function BattleRoomPage() {
       </div>
 
       <div className="battle-log">
-        {battle.log.length === 0 && <p className="muted">A batalha vai começar assim que os dois escolherem um ataque...</p>}
+        {battle.log.length === 0 && (
+          <p className="muted">A batalha vai começar assim que os dois escolherem um ataque...</p>
+        )}
         {battle.log.map((line, i) => (
           <p key={i}>{line}</p>
         ))}
@@ -108,34 +76,7 @@ export default function BattleRoomPage() {
           {me.lockedIn ? (
             <p className="status-msg">Aguardando {opponent.username}...</p>
           ) : (
-            <>
-              <div className="move-grid">
-                {me.creature.attacks.map((a) => {
-                  const uses = me.usesLeft[a.id] ?? 0;
-                  return (
-                    <button
-                      key={a.id}
-                      type="button"
-                      className="btn-move"
-                      disabled={uses <= 0}
-                      onClick={() => pickMove(a.id)}
-                    >
-                      <span className="move-name">{a.name}</span>
-                      <span className="move-meta">
-                        {a.type || 'Sem tipo'} · Pot. {a.power} · {a.category === 'especial' ? 'Especial' : 'Físico'}
-                      </span>
-                      <span className="move-uses">{uses}/3 usos</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {showStruggle && (
-                <button type="button" className="btn-move btn-move-struggle" onClick={() => pickMove('struggle')}>
-                  <span className="move-name">Investida Desesperada</span>
-                  <span className="move-meta">Sem ataques restantes — golpe fraco de emergência</span>
-                </button>
-              )}
-            </>
+            <MoveGrid attacks={me.creature.attacks} usesLeft={me.usesLeft} onPick={pickMove} />
           )}
         </div>
       )}

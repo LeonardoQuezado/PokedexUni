@@ -25,6 +25,11 @@ export default function Header() {
             ⚔️ Arena
           </Link>
         )}
+        {user && (
+          <Link to="/aventura" className="btn-adventure">
+            🗺️ Aventura
+          </Link>
+        )}
         {user ? (
           <>
             <Link to="/perfil" className="header-user">

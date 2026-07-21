@@ -1,7 +1,10 @@
 const { Server } = require('socket.io');
 const { verifyToken, COOKIE_NAME } = require('./auth');
-const { readDb, enrichOwnedCreatures } = require('./db');
-const { STRUGGLE, USES_PER_MOVE, calculateDamage } = require('./attacks');
+const { readDb, writeDb, enrichOwnedCreatures } = require('./db');
+const { STRUGGLE, USES_PER_MOVE, normalizeAttacks, calculateDamage } = require('./attacks');
+
+const WILD_USER_ID = -1;
+const WILD_SPECIES_NUMBER = 1; // Dayon is the only catchable species for now
 
 function parseCookies(header) {
   const out = {};
@@ -70,7 +73,29 @@ function attachSocket(server) {
     };
   }
 
-  function createBattle(roomId, playerA, playerB) {
+  function buildWildPlayer(species) {
+    const attacks = normalizeAttacks(species.attacks);
+    const creature = {
+      name: species.name,
+      imageUrl: species.imageUrl || null,
+      stats: species.stats,
+      weaknesses: species.weaknesses || [],
+      attacks,
+    };
+    return {
+      userId: WILD_USER_ID,
+      username: `${species.name} selvagem`,
+      photoUrl: species.imageUrl || null,
+      isWild: true,
+      speciesId: species.id,
+      creature,
+      hp: species.stats.hp,
+      maxHp: species.stats.hp,
+      usesLeft: Object.fromEntries(attacks.map((a) => [a.id, USES_PER_MOVE])),
+    };
+  }
+
+  function createBattle(roomId, playerA, playerB, extra) {
     const state = {
       roomId,
       status: 'active',
@@ -78,9 +103,27 @@ function attachSocket(server) {
       log: [],
       players: [playerA, playerB],
       pendingMoves: {},
+      ...extra,
     };
     battles.set(roomId, state);
     return state;
+  }
+
+  function createWildBattle(db, humanUserId) {
+    const species = db.creatures.find((c) => c.number === WILD_SPECIES_NUMBER);
+    if (!species) return null;
+
+    const human = buildBattlePlayer(db, humanUserId);
+    if (!human.creature) return null;
+
+    const wild = buildWildPlayer(species);
+    const roomId = `wild-${humanUserId}-${Date.now()}`;
+    return createBattle(roomId, human, wild, {
+      isWild: true,
+      captured: false,
+      fled: false,
+      log: [`Um ${species.name} selvagem apareceu!`],
+    });
   }
 
   function findMove(player, attackId) {
@@ -90,6 +133,33 @@ function attachSocket(server) {
 
   function hasUsableMove(player) {
     return (player.creature?.attacks || []).some((a) => (player.usesLeft[a.id] ?? 0) > 0);
+  }
+
+  function pickAiMove(player) {
+    const usable = (player.creature?.attacks || []).filter((a) => (player.usesLeft[a.id] ?? 0) > 0);
+    if (usable.length === 0) return 'struggle';
+    return usable[Math.floor(Math.random() * usable.length)].id;
+  }
+
+  function applyAttack(attacker, move, defender, battle) {
+    if (move.id !== 'struggle') {
+      attacker.usesLeft[move.id] = Math.max(0, (attacker.usesLeft[move.id] ?? 0) - 1);
+    }
+    const hits = Math.random() * 100 < move.accuracy;
+    if (!hits) {
+      battle.log.push(`${attacker.username} usou ${move.name}, mas errou!`);
+      return;
+    }
+    const { damage, effective } = calculateDamage(
+      attacker.creature.stats,
+      defender.creature.stats,
+      defender.creature.weaknesses,
+      move
+    );
+    defender.hp = Math.max(0, defender.hp - damage);
+    battle.log.push(
+      `${attacker.username} usou ${move.name}! Causou ${damage} de dano${effective ? ' (super efetivo!)' : ''}.`
+    );
   }
 
   function resolveTurn(battle) {
@@ -111,27 +181,7 @@ function attachSocket(server) {
 
     for (const [attacker, move, defender] of order) {
       if (attacker.hp <= 0 || defender.hp <= 0) continue;
-
-      if (move.id !== 'struggle') {
-        attacker.usesLeft[move.id] = Math.max(0, (attacker.usesLeft[move.id] ?? 0) - 1);
-      }
-
-      const hits = Math.random() * 100 < move.accuracy;
-      if (!hits) {
-        battle.log.push(`${attacker.username} usou ${move.name}, mas errou!`);
-        continue;
-      }
-
-      const { damage, effective } = calculateDamage(
-        attacker.creature.stats,
-        defender.creature.stats,
-        defender.creature.weaknesses,
-        move
-      );
-      defender.hp = Math.max(0, defender.hp - damage);
-      battle.log.push(
-        `${attacker.username} usou ${move.name}! Causou ${damage} de dano${effective ? ' (super efetivo!)' : ''}.`
-      );
+      applyAttack(attacker, move, defender, battle);
     }
 
     battle.pendingMoves = {};
@@ -148,16 +198,64 @@ function attachSocket(server) {
     }
   }
 
+  function handleCatchAttempt(battle, humanPlayer) {
+    const db = readDb();
+    const user = db.users.find((u) => u.id === humanPlayer.userId);
+    if (!user || user.dayonballs <= 0) {
+      battle.log.push('Você não tem mais Dayonballs!');
+      return;
+    }
+
+    const wild = battle.players.find((p) => p.isWild);
+    user.dayonballs -= 1;
+
+    const missingRatio = 1 - wild.hp / wild.maxHp;
+    const chance = 30 + Math.round(20 * missingRatio);
+    const success = Math.random() * 100 < chance;
+
+    if (success) {
+      const newOwned = {
+        id: db.ownedCreatures.reduce((max, o) => Math.max(max, o.id), 0) + 1,
+        userId: user.id,
+        speciesId: wild.speciesId,
+        createdAt: new Date().toISOString(),
+      };
+      db.ownedCreatures.push(newOwned);
+      battle.status = 'finished';
+      battle.captured = true;
+      battle.log.push(`Você jogou uma Dayonball... Capturou ${wild.creature.name}!`);
+      writeDb(db);
+      return;
+    }
+
+    battle.log.push(`Você jogou uma Dayonball... ${wild.creature.name} escapou!`);
+    writeDb(db);
+
+    const aiMoveId = pickAiMove(wild);
+    const move = findMove(wild, aiMoveId);
+    applyAttack(wild, move, humanPlayer, battle);
+
+    if (humanPlayer.hp <= 0) {
+      battle.status = 'finished';
+      battle.log.push(`Seu ${humanPlayer.creature.name} desmaiou!`);
+    }
+  }
+
   function serializeBattle(battle) {
+    const db = readDb();
     return {
       roomId: battle.roomId,
+      isWild: !!battle.isWild,
       status: battle.status,
       winnerId: battle.winnerId,
+      captured: !!battle.captured,
+      fled: !!battle.fled,
       log: battle.log.slice(-30),
       players: battle.players.map((p) => ({
         userId: p.userId,
         username: p.username,
         photoUrl: p.photoUrl,
+        isWild: !!p.isWild,
         hp: p.hp,
         maxHp: p.maxHp,
         creature: p.creature && {
@@ -167,6 +265,7 @@ function attachSocket(server) {
         },
         usesLeft: p.usesLeft,
         lockedIn: battle.pendingMoves[p.userId] != null,
+        dayonballs: p.isWild ? undefined : db.users.find((u) => u.id === p.userId)?.dayonballs ?? 0,
       })),
     };
   }
@@ -234,13 +333,41 @@ function attachSocket(server) {
       socket.emit('battle:state', serializeBattle(battle));
     });
 
+    socket.on('adventure:encounter', (data, callback) => {
+      const ack = typeof callback === 'function' ? callback : () => {};
+      const db = readDb();
+      const battle = createWildBattle(db, socket.userId);
+      if (!battle) {
+        ack({ error: 'Não foi possível iniciar o encontro.' });
+        return;
+      }
+      socket.join(battle.roomId);
+      ack({ roomId: battle.roomId });
+    });
+
     socket.on('battle:selectMove', ({ roomId, attackId }) => {
       const battle = battles.get(roomId);
       if (!battle || battle.status !== 'active') return;
 
       const player = battle.players.find((p) => p.userId === socket.userId);
-      if (!player) return;
+      if (!player || player.isWild) return;
       if (battle.pendingMoves[socket.userId] != null) return;
+
+      if (attackId === 'run') {
+        if (!battle.isWild) return;
+        battle.status = 'finished';
+        battle.fled = true;
+        battle.log.push(`${player.username} fugiu do combate.`);
+        io.to(roomId).emit('battle:state', serializeBattle(battle));
+        return;
+      }
+
+      if (attackId === 'dayonball') {
+        if (!battle.isWild) return;
+        handleCatchAttempt(battle, player);
+        io.to(roomId).emit('battle:state', serializeBattle(battle));
+        return;
+      }
 
       if (attackId === 'struggle') {
         if (hasUsableMove(player)) return;
@@ -250,6 +377,11 @@ function attachSocket(server) {
       }
 
       battle.pendingMoves[socket.userId] = attackId;
+
+      if (battle.isWild) {
+        const wild = battle.players.find((p) => p.isWild);
+        battle.pendingMoves[wild.userId] = pickAiMove(wild);
+      }
 
       if (Object.keys(battle.pendingMoves).length === battle.players.length) {
         resolveTurn(battle);

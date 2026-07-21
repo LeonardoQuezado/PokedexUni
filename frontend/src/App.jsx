@@ -11,6 +11,9 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import ProfilePage from './pages/ProfilePage';
 import ArenaPage from './pages/ArenaPage';
 import BattleRoomPage from './pages/BattleRoomPage';
+import AdventurePage from './pages/AdventurePage';
+import ExploreBlockDPage from './pages/ExploreBlockDPage';
+import WildBattlePage from './pages/WildBattlePage';
 
 export default function App() {
   return (
@@ -30,6 +33,9 @@ export default function App() {
               <Route path="/perfil" element={<ProfilePage />} />
               <Route path="/arena" element={<ArenaPage />} />
               <Route path="/arena/batalha/:roomId" element={<BattleRoomPage />} />
+              <Route path="/aventura" element={<AdventurePage />} />
+              <Route path="/aventura/bloco-d" element={<ExploreBlockDPage />} />
+              <Route path="/aventura/batalha/:roomId" element={<WildBattlePage />} />
             </Routes>
           </main>
         </div>
