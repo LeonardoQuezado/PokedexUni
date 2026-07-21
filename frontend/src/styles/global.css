@@ -579,6 +579,33 @@ a {
 }
 
 /* Auth / profile pages */
+.auth-bg-wrapper {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+.auth-bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 18%;
+  filter: brightness(0.42) saturate(1.15);
+}
+.auth-bg-fallback {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at top, #241040 0%, #0c0616 70%);
+}
+.auth-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12, 6, 22, 0.2) 0%, rgba(12, 6, 22, 0.94) 68%);
+}
+.auth-bg-content {
+  position: relative;
+  z-index: 1;
+}
+
 .auth-page {
   padding: 28px 32px 60px;
   max-width: 480px;
