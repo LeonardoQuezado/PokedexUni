@@ -1,3 +1,5 @@
+const PANCADA = { id: 'pancada', name: 'Pancada', type: null, category: 'fisico', power: 45, accuracy: 100 };
+
 function lockReason(attack, opponentStatus, selfStatus) {
   if (attack.effect?.kind === 'requiresStatus' && !opponentStatus?.[attack.effect.status]) {
     return `Requer inimigo ${attack.effect.status}`;
@@ -9,14 +11,15 @@ function lockReason(attack, opponentStatus, selfStatus) {
 }
 
 export default function MoveGrid({ attacks, usesLeft, onPick, opponentStatus = {}, selfStatus = {} }) {
-  const showStruggle = attacks.every(
+  const allAttacks = [...attacks, PANCADA];
+  const showStruggle = allAttacks.every(
     (a) => (usesLeft[a.id] ?? 0) <= 0 || !!lockReason(a, opponentStatus, selfStatus)
   );
 
   return (
     <>
       <div className="move-grid">
-        {attacks.map((a) => {
+        {allAttacks.map((a) => {
           const uses = usesLeft[a.id] ?? 0;
           const locked = lockReason(a, opponentStatus, selfStatus);
           return (

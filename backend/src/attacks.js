@@ -19,6 +19,15 @@ const INCONSEQUENT_ATTACK = {
   accuracy: 100,
 };
 
+const PANCADA = {
+  id: 'pancada',
+  name: 'Pancada',
+  type: null,
+  category: 'fisico',
+  power: 45,
+  accuracy: 100,
+};
+
 const EFFECT_KINDS = [
   'lowerDefense',
   'coinFlip',
@@ -34,6 +43,8 @@ const EFFECT_KINDS = [
   'invulnerable',
   'chanceConfuse',
   'escalatingPerUse',
+  'selfEvasionBuff',
+  'selfStatusPenalty',
 ];
 const DEFAULT_STATUS = 'lubrificado';
 
@@ -69,11 +80,7 @@ function normalizeEffect(raw) {
       selfSpeedPenalty: clampPct(raw.selfSpeedPenalty, 0.5),
     };
   } else if (raw.kind === 'critChance') {
-    effect = {
-      kind: 'critChance',
-      chance: clampPct(raw.chance, 0.35),
-      selfScareFleeBoost: clampPct(raw.selfScareFleeBoost, 0.25),
-    };
+    effect = { kind: 'critChance', chance: clampPct(raw.chance, 0.35) };
   } else if (raw.kind === 'stackingBuff') {
     effect = { kind: 'stackingBuff', stat: 'attack', statBoostPerStack: clampPct(raw.statBoostPerStack, 0.15) };
   } else if (raw.kind === 'resetStacksHeal') {
@@ -108,6 +115,19 @@ function normalizeEffect(raw) {
         clampPower(tiers[1], 60),
         clampPower(tiers[2], 140),
       ],
+    };
+  } else if (raw.kind === 'selfEvasionBuff') {
+    effect = {
+      kind: 'selfEvasionBuff',
+      status: String(raw.status || 'sniff').slice(0, 30),
+      evasionBoost: clampPct(raw.evasionBoost, 0.2),
+      speedBoost: clampPct(raw.speedBoost, 0.2),
+    };
+  } else if (raw.kind === 'selfStatusPenalty') {
+    effect = {
+      kind: 'selfStatusPenalty',
+      status: String(raw.status || 'sniff').slice(0, 30),
+      penaltyPercent: clampPct(raw.penaltyPercent, 0.5),
     };
   } else {
     return null;
@@ -166,6 +186,7 @@ module.exports = {
   USES_PER_MOVE,
   STRUGGLE,
   INCONSEQUENT_ATTACK,
+  PANCADA,
   DEFAULT_STATUS,
   normalizeAttack,
   normalizeAttacks,

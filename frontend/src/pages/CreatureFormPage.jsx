@@ -44,10 +44,7 @@ const EFFECT_FIELDS = {
   coinFlip: [{ key: 'selfDamagePercent', label: 'Dano a si mesmo se hesitar (%)' }],
   applyStatus: [{ key: 'selfSpeedBoost', label: 'Ganho de velocidade próprio (%)' }],
   requiresStatus: [{ key: 'selfSpeedPenalty', label: 'Perda de velocidade própria (%)' }],
-  critChance: [
-    { key: 'chance', label: 'Chance de crítico (%)' },
-    { key: 'selfScareFleeBoost', label: 'Aumento na chance de fugir após crítico (%)' },
-  ],
+  critChance: [{ key: 'chance', label: 'Chance de crítico (%)' }],
   stackingBuff: [{ key: 'statBoostPerStack', label: 'Ganho de ataque por uso (%)' }],
   resetStacksHeal: [],
   tauntStatus: [],
@@ -64,6 +61,11 @@ const EFFECT_FIELDS = {
     { key: 'power2', label: 'Poder no 2º uso' },
     { key: 'power3', label: 'Poder no 3º uso' },
   ],
+  selfEvasionBuff: [
+    { key: 'evasionBoost', label: 'Ganho de esquiva (%)' },
+    { key: 'speedBoost', label: 'Ganho de velocidade (%)' },
+  ],
+  selfStatusPenalty: [{ key: 'penaltyPercent', label: 'Redução no próprio dano se já tiver o status (%)' }],
 };
 
 const EFFECT_KIND_LABELS = {
@@ -71,7 +73,7 @@ const EFFECT_KIND_LABELS = {
   coinFlip: 'Risco: acerta si mesmo ou o inimigo',
   applyStatus: 'Aplica status no inimigo + ganha velocidade',
   requiresStatus: 'Finalizador: requer status no inimigo, crítico garantido',
-  critChance: 'Chance de crítico (fica assustado se acertar)',
+  critChance: 'Chance de crítico (arena: desmaia; aventura: foge)',
   stackingBuff: 'Ganha ataque a cada uso (acumulativo)',
   resetStacksHeal: 'Remove o ataque acumulado e cura tudo',
   tauntStatus: 'Provoca: inimigo só usa ataque fraco no próximo turno',
@@ -81,6 +83,8 @@ const EFFECT_KIND_LABELS = {
   invulnerable: 'Fica invulnerável por 1 turno',
   chanceConfuse: 'Chance de confundir o inimigo',
   escalatingPerUse: 'Sempre acerta; poder aumenta a cada uso (3 usos)',
+  selfEvasionBuff: 'Aumenta esquiva e velocidade própria',
+  selfStatusPenalty: 'Dano reduzido se já estiver com o próprio status (ex.: sniff)',
 };
 
 function buildEffect(a) {

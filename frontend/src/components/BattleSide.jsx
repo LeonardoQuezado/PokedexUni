@@ -4,6 +4,7 @@ const STATUS_LABELS = {
   confuso: '💫 Confuso',
   invulneravel: '🛡️ Invulnerável',
   estudando: '📖 Estudando',
+  sniff: '🤧 Sniff',
 };
 
 export default function BattleSide({ player }) {
