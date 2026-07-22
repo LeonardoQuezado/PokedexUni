@@ -1,14 +1,4 @@
 const MAX_ATTACKS = 4;
-const USES_PER_MOVE = 3;
-
-const STRUGGLE = {
-  id: 'struggle',
-  name: 'Investida Desesperada',
-  type: null,
-  category: 'fisico',
-  power: 30,
-  accuracy: 100,
-};
 
 const INCONSEQUENT_ATTACK = {
   id: 'inconsequente',
@@ -183,8 +173,6 @@ function calculateDamage(attackerStats, defenderStats, defenderWeaknesses, move,
 
 module.exports = {
   MAX_ATTACKS,
-  USES_PER_MOVE,
-  STRUGGLE,
   INCONSEQUENT_ATTACK,
   PANCADA,
   DEFAULT_STATUS,

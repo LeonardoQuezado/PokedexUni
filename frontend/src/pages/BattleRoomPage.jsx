@@ -104,7 +104,6 @@ export default function BattleRoomPage() {
           ) : (
             <MoveGrid
               attacks={me.creature.attacks}
-              usesLeft={me.usesLeft}
               onPick={pickMove}
               opponentStatus={opponent.statusEffects}
               selfStatus={me.statusEffects}

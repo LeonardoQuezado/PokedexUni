@@ -82,7 +82,7 @@ const EFFECT_KIND_LABELS = {
   selfBuffGate: 'Aumenta velocidade e defesa própria (libera ataques com pré-requisito)',
   invulnerable: 'Fica invulnerável por 1 turno',
   chanceConfuse: 'Chance de confundir o inimigo',
-  escalatingPerUse: 'Sempre acerta; poder aumenta a cada uso (3 usos)',
+  escalatingPerUse: 'Sempre acerta; poder aumenta a cada uso, até o 3º',
   selfEvasionBuff: 'Aumenta esquiva e velocidade própria',
   selfStatusPenalty: 'Dano reduzido se já estiver com o próprio status (ex.: sniff)',
 };

@@ -1113,20 +1113,10 @@ fieldset + fieldset {
   font-size: 0.8rem;
   color: var(--muted);
 }
-.move-uses {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--accent-blue);
-}
 .move-locked {
   font-size: 0.75rem;
   font-weight: 600;
   color: #fb7185;
-}
-.btn-move-struggle {
-  width: 100%;
-  align-items: center;
-  text-align: center;
 }
 
 .wild-actions {

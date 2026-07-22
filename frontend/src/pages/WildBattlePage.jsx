@@ -130,7 +130,6 @@ export default function WildBattlePage() {
               </div>
               <MoveGrid
                 attacks={me.creature.attacks}
-                usesLeft={me.usesLeft}
                 onPick={act}
                 opponentStatus={wild.statusEffects}
                 selfStatus={me.statusEffects}

@@ -1,14 +1,7 @@
 const { Server } = require('socket.io');
 const { verifyToken, COOKIE_NAME } = require('./auth');
 const { readDb, writeDb, enrichOwnedCreatures } = require('./db');
-const {
-  STRUGGLE,
-  INCONSEQUENT_ATTACK,
-  PANCADA,
-  USES_PER_MOVE,
-  normalizeAttacks,
-  calculateDamage,
-} = require('./attacks');
+const { INCONSEQUENT_ATTACK, PANCADA, normalizeAttacks, calculateDamage } = require('./attacks');
 const { scaleStats, xpReward, applyXp, randomWildLevel } = require('./leveling');
 
 const WILD_USER_ID = -1;
@@ -82,7 +75,7 @@ function attachSocket(server) {
       creature: null,
       hp: 0,
       maxHp: 0,
-      usesLeft: {},
+      moveUseCount: {},
       statMods: { attack: 1, defense: 1, speed: 1, accuracy: 1, evasion: 0 },
       statusEffects: {},
       fleeBonus: 0,
@@ -115,7 +108,7 @@ function attachSocket(server) {
       creature: null,
       hp: 0,
       maxHp: 0,
-      usesLeft: {},
+      moveUseCount: {},
       statMods: { attack: 1, defense: 1, speed: 1, accuracy: 1, evasion: 0 },
       statusEffects: {},
       fleeBonus: 0,
@@ -127,10 +120,7 @@ function attachSocket(server) {
     player.creature = creature;
     player.hp = creature.stats.hp;
     player.maxHp = creature.stats.hp;
-    player.usesLeft = {
-      ...Object.fromEntries(creature.attacks.map((a) => [a.id, USES_PER_MOVE])),
-      pancada: USES_PER_MOVE,
-    };
+    player.moveUseCount = {};
     player.statMods = { attack: 1, defense: 1, speed: 1, accuracy: 1, evasion: 0 };
     player.statusEffects = {};
     player.fleeBonus = 0;
@@ -165,7 +155,7 @@ function attachSocket(server) {
       creature,
       hp: scaledStats.hp,
       maxHp: scaledStats.hp,
-      usesLeft: { ...Object.fromEntries(attacks.map((a) => [a.id, USES_PER_MOVE])), pancada: USES_PER_MOVE },
+      moveUseCount: {},
       statMods: { attack: 1, defense: 1, speed: 1, accuracy: 1, evasion: 0 },
       statusEffects: {},
       fleeBonus: 0,
@@ -223,7 +213,6 @@ function attachSocket(server) {
   }
 
   function findMove(player, attackId) {
-    if (attackId === 'struggle') return STRUGGLE;
     if (attackId === 'pancada') return PANCADA;
     return (player.creature?.attacks || []).find((a) => a.id === attackId) || null;
   }
@@ -244,7 +233,6 @@ function attachSocket(server) {
   }
 
   function moveIsUsable(player, attack, opponent) {
-    if ((player.usesLeft[attack.id] ?? 0) <= 0) return false;
     if (attack.effect?.kind === 'requiresStatus') {
       if (!opponent?.statusEffects?.[attack.effect.status]) return false;
     }
@@ -258,19 +246,14 @@ function attachSocket(server) {
     return [...(player.creature?.attacks || []), PANCADA];
   }
 
-  function hasUsableMove(player, opponent) {
-    return allCandidateMoves(player).some((a) => moveIsUsable(player, a, opponent));
-  }
-
   function pickAiMove(player, opponent) {
     const usable = allCandidateMoves(player).filter((a) => moveIsUsable(player, a, opponent));
-    if (usable.length === 0) return 'struggle';
     return usable[Math.floor(Math.random() * usable.length)].id;
   }
 
   function applyAttack(attacker, move, defender, battle) {
-    if (move.id !== 'struggle' && move.id !== 'inconsequente') {
-      attacker.usesLeft[move.id] = Math.max(0, (attacker.usesLeft[move.id] ?? 0) - 1);
+    if (move.id !== 'inconsequente') {
+      attacker.moveUseCount[move.id] = (attacker.moveUseCount[move.id] ?? 0) + 1;
     }
 
     if (attacker.statusEffects?.confuso && Math.random() < CONFUSION_SELF_HIT_CHANCE) {
@@ -371,7 +354,7 @@ function attachSocket(server) {
 
     let effectiveMove = move;
     if (kind === 'escalatingPerUse') {
-      const useNumber = USES_PER_MOVE - (attacker.usesLeft[move.id] ?? 0);
+      const useNumber = attacker.moveUseCount[move.id] ?? 1;
       const tierIndex = Math.max(0, Math.min(useNumber, move.effect.powers.length) - 1);
       effectiveMove = { ...move, power: move.effect.powers[tierIndex] };
     }
@@ -647,7 +630,6 @@ function attachSocket(server) {
           imageUrl: p.creature.imageUrl,
           attacks: p.creature.attacks,
         },
-        usesLeft: p.usesLeft,
         statusEffects: p.statusEffects || {},
         lockedIn: battle.pendingMoves[p.userId] != null,
         dayonballs: p.isWild ? undefined : db.users.find((u) => u.id === p.userId)?.dayonballs ?? 0,
@@ -793,12 +775,8 @@ function attachSocket(server) {
 
       const opponent = battle.players.find((p) => p.userId !== socket.userId);
 
-      if (attackId === 'struggle') {
-        if (hasUsableMove(player, opponent)) return;
-      } else {
-        const move = findMove(player, attackId);
-        if (!move || !moveIsUsable(player, move, opponent)) return;
-      }
+      const move = findMove(player, attackId);
+      if (!move || !moveIsUsable(player, move, opponent)) return;
 
       battle.pendingMoves[socket.userId] = attackId;
 
