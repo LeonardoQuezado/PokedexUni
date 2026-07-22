@@ -26,7 +26,10 @@ export default function BattleSide({ player }) {
               {player.creature.name.charAt(0).toUpperCase()}
             </div>
           )}
-          <span className="battle-creature-name">{player.creature.name}</span>
+          <span className="battle-creature-name">
+            {player.creature.name}
+            {player.level != null && <span className="battle-level-badge">Nv. {player.level}</span>}
+          </span>
         </div>
       )}
     </div>

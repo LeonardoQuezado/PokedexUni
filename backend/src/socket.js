@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const { verifyToken, COOKIE_NAME } = require('./auth');
 const { readDb, writeDb, enrichOwnedCreatures } = require('./db');
 const { STRUGGLE, USES_PER_MOVE, normalizeAttacks, calculateDamage } = require('./attacks');
+const { scaleStats, xpReward, applyXp, randomWildLevel } = require('./leveling');
 
 const WILD_USER_ID = -1;
 const WILD_SPECIES_NUMBER = 1; // Dayon is the only catchable species for now
@@ -73,12 +74,13 @@ function attachSocket(server) {
     };
   }
 
-  function buildWildPlayer(species) {
+  function buildWildPlayer(species, level) {
     const attacks = normalizeAttacks(species.attacks);
+    const scaledStats = scaleStats(species.stats, level);
     const creature = {
       name: species.name,
       imageUrl: species.imageUrl || null,
-      stats: species.stats,
+      stats: scaledStats,
       weaknesses: species.weaknesses || [],
       attacks,
     };
@@ -88,9 +90,10 @@ function attachSocket(server) {
       photoUrl: species.imageUrl || null,
       isWild: true,
       speciesId: species.id,
+      level,
       creature,
-      hp: species.stats.hp,
-      maxHp: species.stats.hp,
+      hp: scaledStats.hp,
+      maxHp: scaledStats.hp,
       usesLeft: Object.fromEntries(attacks.map((a) => [a.id, USES_PER_MOVE])),
     };
   }
@@ -116,13 +119,17 @@ function attachSocket(server) {
     const human = buildBattlePlayer(db, humanUserId);
     if (!human.creature) return null;
 
-    const wild = buildWildPlayer(species);
+    const wildLevel = randomWildLevel(human.creature.level);
+    const wild = buildWildPlayer(species, wildLevel);
     const roomId = `wild-${humanUserId}-${Date.now()}`;
     return createBattle(roomId, human, wild, {
       isWild: true,
       captured: false,
       fled: false,
-      log: [`Um ${species.name} selvagem apareceu!`],
+      xpGained: null,
+      leveledUp: false,
+      newLevel: null,
+      log: [`Um ${species.name} selvagem (nível ${wildLevel}) apareceu!`],
     });
   }
 
@@ -162,6 +169,26 @@ function attachSocket(server) {
     );
   }
 
+  function awardXp(battle, humanPlayer, wildPlayer) {
+    const db = readDb();
+    const ownedRecord = db.ownedCreatures.find((oc) => oc.id === humanPlayer.creature.id);
+    if (!ownedRecord) return;
+
+    const gained = xpReward(wildPlayer.level, humanPlayer.creature.level);
+    const result = applyXp(ownedRecord, gained);
+    ownedRecord.level = result.level;
+    ownedRecord.xp = result.xp;
+    writeDb(db);
+
+    battle.xpGained = gained;
+    battle.leveledUp = result.leveledUp;
+    battle.newLevel = result.level;
+    battle.log.push(`${humanPlayer.creature.name} ganhou ${gained} de XP!`);
+    if (result.leveledUp) {
+      battle.log.push(`${humanPlayer.creature.name} subiu para o nível ${result.level}!`);
+    }
+  }
+
   function resolveTurn(battle) {
     const [p1, p2] = battle.players;
     const move1 = findMove(p1, battle.pendingMoves[p1.userId]);
@@ -195,6 +222,11 @@ function attachSocket(server) {
           ? `${battle.players.find((p) => p.userId === battle.winnerId).username} venceu a batalha!`
           : 'Empate! Os dois desmaiaram ao mesmo tempo.'
       );
+
+      if (battle.isWild && loser.isWild) {
+        const humanPlayer = battle.players.find((p) => !p.isWild);
+        awardXp(battle, humanPlayer, loser);
+      }
     }
   }
 
@@ -218,6 +250,8 @@ function attachSocket(server) {
         id: db.ownedCreatures.reduce((max, o) => Math.max(max, o.id), 0) + 1,
         userId: user.id,
         speciesId: wild.speciesId,
+        level: wild.level,
+        xp: 0,
         createdAt: new Date().toISOString(),
       };
       db.ownedCreatures.push(newOwned);
@@ -250,12 +284,16 @@ function attachSocket(server) {
       winnerId: battle.winnerId,
       captured: !!battle.captured,
       fled: !!battle.fled,
+      xpGained: battle.xpGained ?? null,
+      leveledUp: !!battle.leveledUp,
+      newLevel: battle.newLevel ?? null,
       log: battle.log.slice(-30),
       players: battle.players.map((p) => ({
         userId: p.userId,
         username: p.username,
         photoUrl: p.photoUrl,
         isWild: !!p.isWild,
+        level: p.isWild ? p.level : p.creature?.level,
         hp: p.hp,
         maxHp: p.maxHp,
         creature: p.creature && {

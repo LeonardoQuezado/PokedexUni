@@ -71,13 +71,36 @@ export default function ProfilePage() {
       </div>
 
       <h2>Minhas criaturas</h2>
-      <div className="badge-row">
+      <div className="profile-creature-grid">
         {ownedCreatures.length === 0 && <span className="muted">Nenhuma criatura ainda.</span>}
-        {ownedCreatures.map((c) => (
-          <span key={c.id} className="type-badge" style={{ backgroundColor: '#a855f7' }}>
-            {c.name} (Nº {String(c.number).padStart(4, '0')})
-          </span>
-        ))}
+        {ownedCreatures.map((c) => {
+          const xpPct = c.xpToNext > 0 ? Math.min(100, Math.round((c.xp / c.xpToNext) * 100)) : 0;
+          return (
+            <div key={c.id} className="profile-creature-card">
+              {c.imageUrl ? (
+                <img src={c.imageUrl} alt={c.name} className="profile-creature-photo" />
+              ) : (
+                <div className="profile-creature-photo creature-placeholder">
+                  {c.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="profile-creature-info">
+                <div className="profile-creature-name-row">
+                  <span className="profile-creature-name">
+                    {c.name} <span className="muted">(Nº {String(c.number).padStart(4, '0')})</span>
+                  </span>
+                  <span className="battle-level-badge">Nv. {c.level}</span>
+                </div>
+                <div className="battle-hp-track profile-xp-track">
+                  <div className="profile-xp-fill" style={{ width: `${xpPct}%` }} />
+                </div>
+                <span className="battle-hp-text">
+                  {c.xp} / {c.xpToNext} XP
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

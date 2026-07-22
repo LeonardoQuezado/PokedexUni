@@ -64,6 +64,8 @@ function buildRouter() {
         id: nextId(db.ownedCreatures),
         userId: user.id,
         speciesId: starterSpecies.id,
+        level: 1,
+        xp: 0,
         createdAt: new Date().toISOString(),
       });
     }

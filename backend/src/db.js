@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { normalizeAttacks } = require('./attacks');
+const { scaleStats, xpForLevel } = require('./leveling');
 
 const SEED_FILE = path.join(__dirname, '..', 'seed', 'seed.json');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -26,6 +27,10 @@ function readDb() {
   data.users.forEach((u) => {
     if (typeof u.dayonballs !== 'number') u.dayonballs = 10;
   });
+  data.ownedCreatures.forEach((oc) => {
+    if (typeof oc.level !== 'number') oc.level = 1;
+    if (typeof oc.xp !== 'number') oc.xp = 0;
+  });
   return data;
 }
 
@@ -38,6 +43,15 @@ function enrichOwnedCreatures(db, userId) {
     .filter((oc) => oc.userId === userId)
     .map((oc) => {
       const species = db.creatures.find((c) => c.id === oc.speciesId);
+      const baseStats = species?.stats || {
+        hp: 50,
+        attack: 50,
+        defense: 50,
+        spAttack: 50,
+        spDefense: 50,
+        speed: 50,
+      };
+      const level = oc.level ?? 1;
       return {
         id: oc.id,
         speciesId: oc.speciesId,
@@ -46,7 +60,10 @@ function enrichOwnedCreatures(db, userId) {
         types: species?.types || [],
         weaknesses: species?.weaknesses || [],
         imageUrl: species?.imageUrl || null,
-        stats: species?.stats || { hp: 50, attack: 50, defense: 50, spAttack: 50, spDefense: 50, speed: 50 },
+        level,
+        xp: oc.xp ?? 0,
+        xpToNext: xpForLevel(level),
+        stats: scaleStats(baseStats, level),
         attacks: normalizeAttacks(species?.attacks),
       };
     });

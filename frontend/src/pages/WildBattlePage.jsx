@@ -72,6 +72,14 @@ export default function WildBattlePage() {
             {wonNoCatch && `Você venceu, mas ${wild.creature.name} fugiu no susto!`}
             {lost && `Seu ${me.creature.name} desmaiou...`}
           </h2>
+          {wonNoCatch && battle.xpGained != null && (
+            <p className="battle-xp-gain">
+              {me.creature.name} ganhou <strong>{battle.xpGained} XP</strong>!
+              {battle.leveledUp && (
+                <span className="battle-level-up"> Subiu para o nível {battle.newLevel}!</span>
+              )}
+            </p>
+          )}
           <Link to="/aventura/bloco-d" className="btn-primary">
             Continuar explorando
           </Link>

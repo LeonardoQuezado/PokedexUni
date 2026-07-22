@@ -442,6 +442,56 @@ a {
   box-shadow: 0 0 8px rgba(168, 85, 247, 0.7);
 }
 
+.profile-creature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.profile-creature-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.profile-creature-photo {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid var(--border);
+  font-size: 1.4rem;
+}
+.profile-creature-info {
+  flex: 1;
+  min-width: 0;
+}
+.profile-creature-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.profile-creature-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.profile-creature-info .profile-xp-track {
+  width: 100%;
+}
+.profile-xp-fill {
+  height: 100%;
+  background: var(--neon-cyan);
+  border-radius: 6px;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.7);
+  transition: width 0.3s ease;
+}
+
 .evolution-box {
   background: repeating-linear-gradient(45deg, #1a0e30, #1a0e30 12px, #221338 12px, #221338 24px);
   border: 1px solid var(--border);
@@ -909,6 +959,17 @@ fieldset + fieldset {
   font-size: 0.85rem;
   opacity: 0.9;
 }
+.battle-level-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(216, 70, 239, 0.25);
+  border: 1px solid var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+}
 .battle-vs {
   color: #fff;
   font-weight: 800;
@@ -1025,6 +1086,21 @@ fieldset + fieldset {
 }
 .battle-over h2 {
   margin-bottom: 16px;
+  text-shadow: var(--glow);
+}
+.battle-xp-gain {
+  margin: -6px 0 18px;
+  color: var(--neon-cyan);
+  font-size: 1.05rem;
+}
+.battle-xp-gain strong {
+  color: #fff;
+}
+.battle-level-up {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--accent);
+  font-weight: 800;
   text-shadow: var(--glow);
 }
 
