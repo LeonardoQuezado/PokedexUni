@@ -4,9 +4,11 @@ const fs = require('fs');
 const multer = require('multer');
 const { readDb, writeDb } = require('../db');
 const { normalizeAttacks } = require('../attacks');
+const { requireAdmin } = require('../auth');
 
 function buildRouter(uploadsDir) {
   const router = express.Router();
+  const adminOnly = requireAdmin(readDb);
 
   const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadsDir),
@@ -130,7 +132,7 @@ function buildRouter(uploadsDir) {
     res.json({ ...withNormalizedAttacks(creature), evolutionChain: buildEvolutionChain(db, creature) });
   });
 
-  router.post('/', (req, res) => {
+  router.post('/', adminOnly, (req, res) => {
     const db = readDb();
     const body = req.body || {};
 
@@ -178,7 +180,7 @@ function buildRouter(uploadsDir) {
     res.status(201).json(creature);
   });
 
-  router.put('/:id', (req, res) => {
+  router.put('/:id', adminOnly, (req, res) => {
     const db = readDb();
     const idx = db.creatures.findIndex((c) => String(c.id) === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Criatura não encontrada' });
@@ -229,7 +231,7 @@ function buildRouter(uploadsDir) {
     res.json(updated);
   });
 
-  router.delete('/:id', (req, res) => {
+  router.delete('/:id', adminOnly, (req, res) => {
     const db = readDb();
     const idx = db.creatures.findIndex((c) => String(c.id) === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Criatura não encontrada' });
@@ -248,7 +250,7 @@ function buildRouter(uploadsDir) {
     res.status(204).end();
   });
 
-  router.post('/:id/image', (req, res) => {
+  router.post('/:id/image', adminOnly, (req, res) => {
     const db = readDb();
     const idx = db.creatures.findIndex((c) => String(c.id) === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Criatura não encontrada' });

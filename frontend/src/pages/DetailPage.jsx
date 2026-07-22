@@ -6,10 +6,12 @@ import StatBar from '../components/StatBar';
 import ImageUploader from '../components/ImageUploader';
 import EvolutionChain from '../components/EvolutionChain';
 import { fetchCreature, deleteCreature } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export default function DetailPage() {
   const { idOrNumber } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [creature, setCreature] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,7 +47,7 @@ export default function DetailPage() {
       <div className="detail-grid">
         <div className="detail-media">
           <CreatureImage creature={creature} size="large" />
-          <ImageUploader creatureId={creature.id} onUploaded={load} />
+          {user?.isAdmin && <ImageUploader creatureId={creature.id} onUploaded={load} />}
         </div>
 
         <div className="detail-info">
@@ -129,14 +131,16 @@ export default function DetailPage() {
 
           <EvolutionChain chain={creature.evolutionChain} currentId={creature.id} />
 
-          <div className="detail-actions">
-            <Link to={`/criatura/${creature.number}/editar`} className="btn-secondary">
-              ✏️ Editar
-            </Link>
-            <button type="button" className="btn-danger" onClick={handleDelete}>
-              🗑️ Remover
-            </button>
-          </div>
+          {user?.isAdmin && (
+            <div className="detail-actions">
+              <Link to={`/criatura/${creature.number}/editar`} className="btn-secondary">
+                ✏️ Editar
+              </Link>
+              <button type="button" className="btn-danger" onClick={handleDelete}>
+                🗑️ Remover
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

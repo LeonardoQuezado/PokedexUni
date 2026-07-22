@@ -3,6 +3,11 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'unidex-dev-secret-change-me';
 const COOKIE_NAME = 'unidex_token';
 const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true';
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'leoteste').toLowerCase();
+
+function isAdmin(user) {
+  return !!user && user.username.toLowerCase() === ADMIN_USERNAME;
+}
 
 function signToken(user) {
   return jwt.sign({ sub: user.id }, JWT_SECRET, { expiresIn: '30d' });
@@ -38,6 +43,7 @@ function publicUser(user) {
     verified: user.verified,
     photoUrl: user.photoUrl || null,
     dayonballs: user.dayonballs ?? 10,
+    isAdmin: isAdmin(user),
   };
 }
 
@@ -56,12 +62,27 @@ function requireAuth(readDb) {
   };
 }
 
+function requireAdmin(readDb) {
+  const auth = requireAuth(readDb);
+  return (req, res, next) => {
+    auth(req, res, (err) => {
+      if (err) return next(err);
+      if (!isAdmin(req.user)) {
+        return res.status(403).json({ error: 'Somente o administrador pode fazer isso' });
+      }
+      next();
+    });
+  };
+}
+
 module.exports = {
   COOKIE_NAME,
+  isAdmin,
   signToken,
   verifyToken,
   setAuthCookie,
   clearAuthCookie,
   publicUser,
   requireAuth,
+  requireAdmin,
 };

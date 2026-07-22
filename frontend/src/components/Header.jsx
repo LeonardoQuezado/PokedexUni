@@ -22,9 +22,11 @@ export default function Header() {
             <Link to="/dex" className="header-link">
               Pokédex
             </Link>
-            <Link to="/nova" className="btn-nova">
-              + Nova criatura
-            </Link>
+            {user.isAdmin && (
+              <Link to="/nova" className="btn-nova">
+                + Nova criatura
+              </Link>
+            )}
             <Link to="/arena" className="btn-arena">
               ⚔️ Arena
             </Link>

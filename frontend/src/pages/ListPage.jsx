@@ -3,8 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 import CreatureCard from '../components/CreatureCard';
 import { fetchCreatures } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export default function ListPage() {
+  const { user } = useAuth();
   const [creatures, setCreatures] = useState([]);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('number-asc');
@@ -73,9 +75,11 @@ export default function ListPage() {
             <option value="name-desc">Nome (Z-A)</option>
           </select>
         </div>
-        <Link to="/nova" className="btn-new">
-          + Nova criatura
-        </Link>
+        {user?.isAdmin && (
+          <Link to="/nova" className="btn-new">
+            + Nova criatura
+          </Link>
+        )}
       </div>
 
       {loading && <p className="status-msg">Carregando criaturas...</p>}

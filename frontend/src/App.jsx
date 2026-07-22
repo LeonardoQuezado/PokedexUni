@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import Header from './components/Header';
 import RequireAuth from './components/RequireAuth';
+import RequireAdmin from './components/RequireAdmin';
 import HomePage from './pages/HomePage';
 import ListPage from './pages/ListPage';
 import DetailPage from './pages/DetailPage';
@@ -48,9 +49,9 @@ export default function App() {
               <Route
                 path="/nova"
                 element={
-                  <RequireAuth>
+                  <RequireAdmin>
                     <CreatureFormPage />
-                  </RequireAuth>
+                  </RequireAdmin>
                 }
               />
               <Route
@@ -64,9 +65,9 @@ export default function App() {
               <Route
                 path="/criatura/:idOrNumber/editar"
                 element={
-                  <RequireAuth>
+                  <RequireAdmin>
                     <CreatureFormPage />
-                  </RequireAuth>
+                  </RequireAdmin>
                 }
               />
               <Route
