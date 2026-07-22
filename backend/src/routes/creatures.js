@@ -5,6 +5,7 @@ const multer = require('multer');
 const { readDb, writeDb } = require('../db');
 const { normalizeAttacks } = require('../attacks');
 const { requireAdmin } = require('../auth');
+const { balanceStats } = require('../statBudget');
 
 function buildRouter(uploadsDir) {
   const router = express.Router();
@@ -169,14 +170,7 @@ function buildRouter(uploadsDir) {
       abilities: toArray(body.abilities),
       weaknesses: toArray(body.weaknesses),
       attacks: normalizeAttacks(body.attacks),
-      stats: {
-        hp: Number(body.stats?.hp) || 50,
-        attack: Number(body.stats?.attack) || 50,
-        defense: Number(body.stats?.defense) || 50,
-        spAttack: Number(body.stats?.spAttack) || 50,
-        spDefense: Number(body.stats?.spDefense) || 50,
-        speed: Number(body.stats?.speed) || 50,
-      },
+      stats: balanceStats(body.stats),
       wildFleeChance: clampFleeChance(body.wildFleeChance, 0),
       imageUrl: null,
       evolvesToId,
@@ -221,14 +215,14 @@ function buildRouter(uploadsDir) {
       weaknesses: body.weaknesses !== undefined ? toArray(body.weaknesses) : existing.weaknesses,
       attacks: body.attacks !== undefined ? normalizeAttacks(body.attacks) : normalizeAttacks(existing.attacks),
       stats: body.stats
-        ? {
+        ? balanceStats({
             hp: Number(body.stats.hp) || existing.stats.hp,
             attack: Number(body.stats.attack) || existing.stats.attack,
             defense: Number(body.stats.defense) || existing.stats.defense,
             spAttack: Number(body.stats.spAttack) || existing.stats.spAttack,
             spDefense: Number(body.stats.spDefense) || existing.stats.spDefense,
             speed: Number(body.stats.speed) || existing.stats.speed,
-          }
+          })
         : existing.stats,
       wildFleeChance:
         body.wildFleeChance !== undefined

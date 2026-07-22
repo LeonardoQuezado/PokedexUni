@@ -5,10 +5,11 @@ import { useSocket } from '../context/SocketContext';
 import ArenaBackground from '../components/ArenaBackground';
 import BattleSide from '../components/BattleSide';
 import MoveGrid from '../components/MoveGrid';
+import CreatureSelector from '../components/CreatureSelector';
 
 export default function BattleRoomPage() {
   const { roomId } = useParams();
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const socket = useSocket();
   const [battle, setBattle] = useState(null);
 
@@ -18,15 +19,22 @@ export default function BattleRoomPage() {
     socket.emit('battle:join', roomId);
 
     function handleState(payload) {
-      if (payload.roomId === roomId) setBattle(payload);
+      if (payload.roomId === roomId) {
+        setBattle(payload);
+        if (payload.status === 'finished') refresh();
+      }
     }
 
     socket.on('battle:state', handleState);
     return () => socket.off('battle:state', handleState);
-  }, [socket, roomId]);
+  }, [socket, roomId, refresh]);
 
   function pickMove(attackId) {
     socket?.emit('battle:selectMove', { roomId, attackId });
+  }
+
+  function pickCreature(ownedCreatureId) {
+    socket?.emit('battle:selectCreature', { roomId, ownedCreatureId });
   }
 
   if (!battle) {
@@ -41,6 +49,7 @@ export default function BattleRoomPage() {
   const me = battle.players.find((p) => p.userId === user.id);
   const opponent = battle.players.find((p) => p.userId !== user.id);
   const isOver = battle.status === 'finished';
+  const isSelecting = battle.status === 'selecting';
   const iWon = isOver && battle.winnerId === user.id;
   const draw = isOver && !battle.winnerId;
 
@@ -67,9 +76,26 @@ export default function BattleRoomPage() {
       {isOver ? (
         <div className="battle-over">
           <h2>{draw ? 'Empate!' : iWon ? 'Você venceu!' : `${opponent.username} venceu!`}</h2>
+          {iWon && battle.goldGained != null && (
+            <p className="battle-xp-gain">
+              Você roubou <strong>{battle.goldGained}g</strong> de {opponent.username}!
+            </p>
+          )}
           <Link to="/arena" className="btn-primary">
             Voltar para a Arena
           </Link>
+        </div>
+      ) : isSelecting ? (
+        <div className="battle-moves">
+          {me.pendingSelection ? (
+            <CreatureSelector
+              roster={me.roster}
+              onSelect={pickCreature}
+              title={me.creature ? 'Seu Dayonmon desmaiou! Escolha o próximo:' : 'Escolha seu Dayonmon para começar:'}
+            />
+          ) : (
+            <p className="status-msg">Aguardando {opponent.username} escolher um Dayonmon...</p>
+          )}
         </div>
       ) : (
         <div className="battle-moves">

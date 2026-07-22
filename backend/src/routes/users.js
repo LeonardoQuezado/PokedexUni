@@ -5,6 +5,8 @@ const multer = require('multer');
 const { readDb, writeDb } = require('../db');
 const { publicUser, requireAuth } = require('../auth');
 
+const DAYONBALL_PRICE = 20;
+
 function buildRouter(uploadsDir) {
   const router = express.Router();
   const auth = requireAuth(readDb);
@@ -49,6 +51,35 @@ function buildRouter(uploadsDir) {
 
       res.json({ user: publicUser(user) });
     });
+  });
+
+  router.post('/me/buy-dayonballs', auth, (req, res) => {
+    const quantity = Math.floor(Number(req.body?.quantity));
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return res.status(400).json({ error: 'Quantidade inválida' });
+    }
+
+    const cost = quantity * DAYONBALL_PRICE;
+    const db = readDb();
+    const user = db.users.find((u) => u.id === req.user.id);
+    if ((user.gold ?? 0) < cost) {
+      return res.status(400).json({ error: 'Ouro insuficiente' });
+    }
+
+    user.gold -= cost;
+    user.dayonballs = (user.dayonballs ?? 0) + quantity;
+    writeDb(db);
+
+    res.json({ user: publicUser(user) });
+  });
+
+  router.get('/leaderboard', auth, (req, res) => {
+    const db = readDb();
+    const ranking = [...db.users]
+      .sort((a, b) => (b.arenaWins ?? 0) - (a.arenaWins ?? 0))
+      .slice(0, 50)
+      .map((u) => ({ username: u.username, photoUrl: u.photoUrl || null, arenaWins: u.arenaWins ?? 0 }));
+    res.json(ranking);
   });
 
   return router;

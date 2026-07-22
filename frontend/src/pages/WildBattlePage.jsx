@@ -5,6 +5,7 @@ import { useSocket } from '../context/SocketContext';
 import ArenaBackground from '../components/ArenaBackground';
 import BattleSide from '../components/BattleSide';
 import MoveGrid from '../components/MoveGrid';
+import CreatureSelector from '../components/CreatureSelector';
 
 export default function WildBattlePage() {
   const { roomId } = useParams();
@@ -32,6 +33,10 @@ export default function WildBattlePage() {
     socket?.emit('battle:selectMove', { roomId, attackId });
   }
 
+  function pickCreature(ownedCreatureId) {
+    socket?.emit('battle:selectCreature', { roomId, ownedCreatureId });
+  }
+
   if (!battle) {
     return (
       <div className="page">
@@ -44,6 +49,7 @@ export default function WildBattlePage() {
   const me = battle.players.find((p) => p.userId === user.id);
   const wild = battle.players.find((p) => p.isWild);
   const isOver = battle.status === 'finished';
+  const isSelecting = battle.status === 'selecting';
   const lost = isOver && me.hp <= 0;
   const wildFled = isOver && !!battle.wildFled;
   const wonNoCatch = isOver && !battle.captured && !battle.fled && !wildFled && !lost;
@@ -76,7 +82,14 @@ export default function WildBattlePage() {
           </h2>
           {wonNoCatch && battle.xpGained != null && (
             <p className="battle-xp-gain">
-              {me.creature.name} ganhou <strong>{battle.xpGained} XP</strong>!
+              {me.creature.name} ganhou <strong>{battle.xpGained} XP</strong>
+              {battle.goldGained != null && (
+                <>
+                  {' '}
+                  e <strong>{battle.goldGained}g</strong>
+                </>
+              )}
+              !
               {battle.leveledUp && (
                 <span className="battle-level-up"> Subiu para o nível {battle.newLevel}!</span>
               )}
@@ -85,6 +98,14 @@ export default function WildBattlePage() {
           <Link to="/aventura/bloco-d" className="btn-primary">
             Continuar explorando
           </Link>
+        </div>
+      ) : isSelecting ? (
+        <div className="battle-moves">
+          <CreatureSelector
+            roster={me.roster}
+            onSelect={pickCreature}
+            title={me.creature ? 'Seu Dayonmon desmaiou! Escolha o próximo:' : 'Escolha seu Dayonmon para a aventura:'}
+          />
         </div>
       ) : (
         <div className="battle-moves">

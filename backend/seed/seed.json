@@ -67,7 +67,7 @@
       "abilities": ["Casca Rígida"],
       "weaknesses": ["Água", "Planta", "Lutador"],
       "attacks": [],
-      "stats": { "hp": 55, "attack": 60, "defense": 85, "spAttack": 20, "spDefense": 40, "speed": 20 },
+      "stats": { "hp": 80, "attack": 87, "defense": 122, "spAttack": 29, "spDefense": 58, "speed": 29 },
       "imageUrl": null,
       "evolvesToId": null
     },
@@ -84,7 +84,7 @@
       "abilities": ["Brisa Leve"],
       "weaknesses": ["Elétrico", "Gelo", "Pedra"],
       "attacks": [],
-      "stats": { "hp": 40, "attack": 25, "defense": 30, "spAttack": 70, "spDefense": 65, "speed": 95 },
+      "stats": { "hp": 50, "attack": 31, "defense": 37, "spAttack": 87, "spDefense": 81, "speed": 119 },
       "imageUrl": null,
       "evolvesToId": null
     },
@@ -101,7 +101,7 @@
       "abilities": ["Chama Travessa"],
       "weaknesses": ["Água", "Lutador", "Fada"],
       "attacks": [],
-      "stats": { "hp": 45, "attack": 75, "defense": 35, "spAttack": 80, "spDefense": 40, "speed": 70 },
+      "stats": { "hp": 53, "attack": 88, "defense": 41, "spAttack": 94, "spDefense": 47, "speed": 82 },
       "imageUrl": null,
       "evolvesToId": null
     }

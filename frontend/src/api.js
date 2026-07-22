@@ -95,3 +95,11 @@ export function uploadUserPhoto(file) {
     body: formData,
   }).then(handle);
 }
+
+export function buyDayonballs(quantity) {
+  return sendJson(`${BASE}/users/me/buy-dayonballs`, 'POST', { quantity });
+}
+
+export function fetchLeaderboard() {
+  return getJson(`${BASE}/users/leaderboard`);
+}

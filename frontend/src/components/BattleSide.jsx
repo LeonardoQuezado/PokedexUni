@@ -21,12 +21,18 @@ export default function BattleSide({ player }) {
         </div>
       )}
       <span className="battle-player-name">{player.username}</span>
-      <div className="battle-hp-track">
-        <div className="battle-hp-fill" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="battle-hp-text">
-        {player.hp} / {player.maxHp} PS
-      </span>
+      {player.creature ? (
+        <>
+          <div className="battle-hp-track">
+            <div className="battle-hp-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="battle-hp-text">
+            {player.hp} / {player.maxHp} PS
+          </span>
+        </>
+      ) : (
+        <span className="battle-hp-text muted">{player.pendingSelection ? 'Escolhendo...' : 'Aguardando...'}</span>
+      )}
       {player.creature && (
         <div className="battle-creature">
           {player.creature.imageUrl ? (

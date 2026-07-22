@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { uploadUserPhoto } from '../api';
+import StatBar from '../components/StatBar';
 
 export default function ProfilePage() {
   const { user, ownedCreatures, refresh, loading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [expandedIds, setExpandedIds] = useState(new Set());
+
+  function toggleExpanded(id) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     refresh();
@@ -75,29 +86,54 @@ export default function ProfilePage() {
         {ownedCreatures.length === 0 && <span className="muted">Nenhuma criatura ainda.</span>}
         {ownedCreatures.map((c) => {
           const xpPct = c.xpToNext > 0 ? Math.min(100, Math.round((c.xp / c.xpToNext) * 100)) : 0;
+          const isExpanded = expandedIds.has(c.id);
           return (
-            <div key={c.id} className="profile-creature-card">
-              {c.imageUrl ? (
-                <img src={c.imageUrl} alt={c.name} className="profile-creature-photo" />
-              ) : (
-                <div className="profile-creature-photo creature-placeholder">
-                  {c.name.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="profile-creature-info">
-                <div className="profile-creature-name-row">
-                  <span className="profile-creature-name">
-                    {c.name} <span className="muted">(Nº {String(c.number).padStart(4, '0')})</span>
+            <div
+              key={c.id}
+              className={`profile-creature-card${isExpanded ? ' expanded' : ''}`}
+              onClick={() => toggleExpanded(c.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') toggleExpanded(c.id);
+              }}
+            >
+              <div className="profile-creature-row">
+                {c.imageUrl ? (
+                  <img src={c.imageUrl} alt={c.name} className="profile-creature-photo" />
+                ) : (
+                  <div className="profile-creature-photo creature-placeholder">
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="profile-creature-info">
+                  <div className="profile-creature-name-row">
+                    <span className="profile-creature-name">
+                      {c.name} <span className="muted">(Nº {String(c.number).padStart(4, '0')})</span>
+                    </span>
+                    <span className="battle-level-badge">Nv. {c.level}</span>
+                  </div>
+                  <div className="battle-hp-track profile-xp-track">
+                    <div className="profile-xp-fill" style={{ width: `${xpPct}%` }} />
+                  </div>
+                  <span className="battle-hp-text">
+                    {c.xp} / {c.xpToNext} XP
                   </span>
-                  <span className="battle-level-badge">Nv. {c.level}</span>
                 </div>
-                <div className="battle-hp-track profile-xp-track">
-                  <div className="profile-xp-fill" style={{ width: `${xpPct}%` }} />
-                </div>
-                <span className="battle-hp-text">
-                  {c.xp} / {c.xpToNext} XP
+                <span className="profile-expand-chevron" aria-hidden="true">
+                  {isExpanded ? '▲' : '▼'}
                 </span>
               </div>
+              {isExpanded && (
+                <div className="stats-box profile-creature-stats">
+                  <StatBar label="PS" value={c.stats.hp} />
+                  <StatBar label="Ataque" value={c.stats.attack} />
+                  <StatBar label="Defesa" value={c.stats.defense} />
+                  <StatBar label="Atq. Especial" value={c.stats.spAttack} />
+                  <StatBar label="Def. Especial" value={c.stats.spDefense} />
+                  <StatBar label="Velocidade" value={c.stats.speed} />
+                </div>
+              )}
             </div>
           );
         })}

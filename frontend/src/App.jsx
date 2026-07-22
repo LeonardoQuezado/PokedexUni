@@ -17,6 +17,8 @@ import BattleRoomPage from './pages/BattleRoomPage';
 import AdventurePage from './pages/AdventurePage';
 import ExploreBlockDPage from './pages/ExploreBlockDPage';
 import WildBattlePage from './pages/WildBattlePage';
+import ShopPage from './pages/ShopPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 
 export default function App() {
   return (
@@ -115,6 +117,22 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <WildBattlePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/loja"
+                element={
+                  <RequireAuth>
+                    <ShopPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/ranking"
+                element={
+                  <RequireAuth>
+                    <LeaderboardPage />
                   </RequireAuth>
                 }
               />

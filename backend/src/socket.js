@@ -71,22 +71,44 @@ function attachSocket(server) {
 
   function buildBattlePlayer(db, userId) {
     const user = db.users.find((u) => u.id === userId);
-    const creature = enrichOwnedCreatures(db, userId)[0] || null;
+    const roster = enrichOwnedCreatures(db, userId);
     return {
       userId: user.id,
       username: user.username,
       photoUrl: user.photoUrl || null,
-      creature,
-      hp: creature ? creature.stats.hp : 0,
-      maxHp: creature ? creature.stats.hp : 0,
-      usesLeft: {
-        ...(creature ? Object.fromEntries(creature.attacks.map((a) => [a.id, USES_PER_MOVE])) : {}),
-        pancada: USES_PER_MOVE,
-      },
+      roster,
+      faintedIds: [],
+      creature: null,
+      hp: 0,
+      maxHp: 0,
+      usesLeft: {},
       statMods: { attack: 1, defense: 1, speed: 1, accuracy: 1, evasion: 0 },
       statusEffects: {},
       fleeBonus: 0,
+      pendingSelection: true,
     };
+  }
+
+  function activateCreature(player, creature) {
+    player.creature = creature;
+    player.hp = creature.stats.hp;
+    player.maxHp = creature.stats.hp;
+    player.usesLeft = {
+      ...Object.fromEntries(creature.attacks.map((a) => [a.id, USES_PER_MOVE])),
+      pancada: USES_PER_MOVE,
+    };
+    player.statMods = { attack: 1, defense: 1, speed: 1, accuracy: 1, evasion: 0 };
+    player.statusEffects = {};
+    player.fleeBonus = 0;
+    player.pendingSelection = false;
+  }
+
+  function availableRoster(player) {
+    return (player.roster || []).filter((c) => !(player.faintedIds || []).includes(c.id));
+  }
+
+  function allSelectionsResolved(battle) {
+    return battle.players.every((p) => !p.pendingSelection);
   }
 
   function buildWildPlayer(species, level) {
@@ -142,20 +164,22 @@ function attachSocket(server) {
     if (!species) return null;
 
     const human = buildBattlePlayer(db, humanUserId);
-    if (!human.creature) return null;
+    if (human.roster.length === 0) return null;
 
-    const wildLevel = randomWildLevel(human.creature.level);
+    const referenceLevel = human.roster[0].level;
+    const wildLevel = randomWildLevel(referenceLevel);
     const wild = buildWildPlayer(species, wildLevel);
     const roomId = `wild-${humanUserId}-${Date.now()}`;
     return createBattle(roomId, human, wild, {
       isWild: true,
+      status: 'selecting',
       captured: false,
       fled: false,
       wildFled: false,
       xpGained: null,
       leveledUp: false,
       newLevel: null,
-      log: [`Um ${species.name} selvagem (nível ${wildLevel}) apareceu!`],
+      log: [`Um ${species.name} selvagem (nível ${wildLevel}) apareceu! Escolha seu Dayonmon.`],
     });
   }
 
@@ -394,6 +418,10 @@ function attachSocket(server) {
     }
   }
 
+  function goldReward(wildLevel) {
+    return 5 + wildLevel * 2;
+  }
+
   function awardXp(battle, humanPlayer, wildPlayer) {
     const db = readDb();
     const ownedRecord = db.ownedCreatures.find((oc) => oc.id === humanPlayer.creature.id);
@@ -403,15 +431,38 @@ function attachSocket(server) {
     const result = applyXp(ownedRecord, gained);
     ownedRecord.level = result.level;
     ownedRecord.xp = result.xp;
+
+    const user = db.users.find((u) => u.id === humanPlayer.userId);
+    const goldGained = goldReward(wildPlayer.level);
+    if (user) user.gold = (user.gold ?? 0) + goldGained;
+
     writeDb(db);
 
     battle.xpGained = gained;
     battle.leveledUp = result.leveledUp;
     battle.newLevel = result.level;
+    battle.goldGained = goldGained;
     battle.log.push(`${humanPlayer.creature.name} ganhou ${gained} de XP!`);
     if (result.leveledUp) {
       battle.log.push(`${humanPlayer.creature.name} subiu para o nível ${result.level}!`);
     }
+    battle.log.push(`Você ganhou ${goldGained}g!`);
+  }
+
+  function awardArenaWin(battle, winner, loser) {
+    const db = readDb();
+    const winnerUser = db.users.find((u) => u.id === winner.userId);
+    const loserUser = db.users.find((u) => u.id === loser.userId);
+    if (!winnerUser || !loserUser) return;
+
+    const stolen = Math.round((loserUser.gold ?? 0) * 0.1);
+    loserUser.gold = Math.max(0, (loserUser.gold ?? 0) - stolen);
+    winnerUser.gold = (winnerUser.gold ?? 0) + stolen;
+    winnerUser.arenaWins = (winnerUser.arenaWins ?? 0) + 1;
+    writeDb(db);
+
+    battle.goldGained = stolen;
+    battle.log.push(`${winnerUser.username} roubou ${stolen}g de ${loserUser.username}!`);
   }
 
   function resolveTurn(battle) {
@@ -447,19 +498,43 @@ function attachSocket(server) {
 
     battle.pendingMoves = {};
 
-    const loser = battle.players.find((p) => p.hp <= 0);
-    if (loser) {
-      battle.status = 'finished';
-      battle.winnerId = battle.players.find((p) => p.hp > 0)?.userId ?? null;
-      battle.log.push(
-        battle.winnerId
-          ? `${battle.players.find((p) => p.userId === battle.winnerId).username} venceu a batalha!`
-          : 'Empate! Os dois desmaiaram ao mesmo tempo.'
-      );
+    const fainted = battle.players.filter((p) => p.hp <= 0);
+    if (fainted.length > 0) {
+      const exhausted = [];
+      for (const p of fainted) {
+        if (p.creature && p.creature.id != null) {
+          p.faintedIds = p.faintedIds || [];
+          if (!p.faintedIds.includes(p.creature.id)) p.faintedIds.push(p.creature.id);
+        }
+        battle.log.push(`${creatureLabel(p)} desmaiou!`);
 
-      if (battle.isWild && loser.isWild) {
-        const humanPlayer = battle.players.find((p) => !p.isWild);
-        awardXp(battle, humanPlayer, loser);
+        if (!p.isWild && availableRoster(p).length > 0) {
+          p.pendingSelection = true;
+          battle.log.push(`${p.username}, escolha o próximo Dayonmon!`);
+        } else {
+          exhausted.push(p);
+        }
+      }
+
+      if (exhausted.length > 0) {
+        const loser = exhausted[0];
+        battle.status = 'finished';
+        battle.winnerId = battle.players.find((p) => !exhausted.includes(p))?.userId ?? null;
+        battle.log.push(
+          battle.winnerId
+            ? `${battle.players.find((p) => p.userId === battle.winnerId).username} venceu a batalha!`
+            : 'Empate! Os dois desmaiaram ao mesmo tempo.'
+        );
+
+        if (battle.isWild && loser.isWild) {
+          const humanPlayer = battle.players.find((p) => !p.isWild);
+          awardXp(battle, humanPlayer, loser);
+        } else if (!battle.isWild && battle.winnerId) {
+          const winner = battle.players.find((p) => p.userId === battle.winnerId);
+          awardArenaWin(battle, winner, loser);
+        }
+      } else {
+        battle.status = 'selecting';
       }
     }
   }
@@ -522,6 +597,7 @@ function attachSocket(server) {
       xpGained: battle.xpGained ?? null,
       leveledUp: !!battle.leveledUp,
       newLevel: battle.newLevel ?? null,
+      goldGained: battle.goldGained ?? null,
       log: battle.log.slice(-30),
       players: battle.players.map((p) => ({
         userId: p.userId,
@@ -532,6 +608,7 @@ function attachSocket(server) {
         hp: p.hp,
         maxHp: p.maxHp,
         creature: p.creature && {
+          id: p.creature.id,
           name: p.creature.name,
           imageUrl: p.creature.imageUrl,
           attacks: p.creature.attacks,
@@ -540,6 +617,18 @@ function attachSocket(server) {
         statusEffects: p.statusEffects || {},
         lockedIn: battle.pendingMoves[p.userId] != null,
         dayonballs: p.isWild ? undefined : db.users.find((u) => u.id === p.userId)?.dayonballs ?? 0,
+        pendingSelection: !!p.pendingSelection,
+        roster: p.isWild
+          ? undefined
+          : (p.roster || []).map((c) => ({
+              id: c.id,
+              name: c.name,
+              imageUrl: c.imageUrl,
+              level: c.level,
+              maxHp: c.stats.hp,
+              fainted: (p.faintedIds || []).includes(c.id),
+              active: !!p.creature && p.creature.id === c.id,
+            })),
       })),
     };
   }
@@ -584,10 +673,15 @@ function attachSocket(server) {
       }
 
       const db = readDb();
-      const roomId = `battle-${challenge.fromUserId}-${challenge.toUserId}-${Date.now()}`;
       const playerA = buildBattlePlayer(db, challenge.fromUserId);
       const playerB = buildBattlePlayer(db, challenge.toUserId);
-      createBattle(roomId, playerA, playerB);
+      if (playerA.roster.length === 0 || playerB.roster.length === 0) return;
+
+      const roomId = `battle-${challenge.fromUserId}-${challenge.toUserId}-${Date.now()}`;
+      createBattle(roomId, playerA, playerB, {
+        status: 'selecting',
+        log: ['A batalha vai começar assim que os dois treinadores escolherem seu Dayonmon!'],
+      });
 
       const targetSockets = arenaPresence.get(challenge.toUserId) || new Set();
       [...(fromSockets || []), ...targetSockets].forEach((sid) => {
@@ -605,6 +699,26 @@ function attachSocket(server) {
 
       socket.join(roomId);
       socket.emit('battle:state', serializeBattle(battle));
+    });
+
+    socket.on('battle:selectCreature', ({ roomId, ownedCreatureId }) => {
+      const battle = battles.get(roomId);
+      if (!battle) return;
+
+      const player = battle.players.find((p) => p.userId === socket.userId);
+      if (!player || player.isWild || !player.pendingSelection) return;
+
+      const choice = availableRoster(player).find((c) => c.id === ownedCreatureId);
+      if (!choice) return;
+
+      activateCreature(player, choice);
+      battle.log.push(`${player.username} enviou ${choice.name} para a batalha!`);
+
+      if (allSelectionsResolved(battle)) {
+        battle.status = 'active';
+      }
+
+      io.to(roomId).emit('battle:state', serializeBattle(battle));
     });
 
     socket.on('adventure:encounter', (data, callback) => {

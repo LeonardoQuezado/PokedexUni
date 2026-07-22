@@ -43,6 +43,8 @@ function publicUser(user) {
     verified: user.verified,
     photoUrl: user.photoUrl || null,
     dayonballs: user.dayonballs ?? 10,
+    gold: user.gold ?? 100,
+    arenaWins: user.arenaWins ?? 0,
     isAdmin: isAdmin(user),
   };
 }

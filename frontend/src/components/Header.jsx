@@ -33,6 +33,15 @@ export default function Header() {
             <Link to="/aventura" className="btn-adventure">
               🗺️ Aventura
             </Link>
+            <Link to="/loja" className="header-link">
+              🛒 Loja
+            </Link>
+            <Link to="/ranking" className="header-link">
+              🏆 Ranking
+            </Link>
+            <span className="header-gold" title="Seu ouro">
+              💰 {user.gold ?? 0}g
+            </span>
             <Link to="/perfil" className="header-user">
               {user.username}
             </Link>

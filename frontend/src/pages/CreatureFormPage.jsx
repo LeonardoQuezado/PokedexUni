@@ -364,6 +364,10 @@ export default function CreatureFormPage() {
 
         <fieldset className="full">
           <legend>Estatísticas</legend>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Os stats são rebalanceados automaticamente ao salvar, mantendo a proporção entre eles até somarem 405
+            pontos no total — assim nenhum Dayonmon fica muito mais forte que os outros.
+          </p>
           <div className="stats-grid">
             <label>
               PS

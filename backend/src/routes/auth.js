@@ -6,7 +6,7 @@ const { signToken, setAuthCookie, clearAuthCookie, publicUser, requireAuth, COOK
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
-const STARTER_SPECIES_NUMBER = 1;
+const STARTING_GOLD = 100;
 
 function buildRouter() {
   const router = express.Router();
@@ -54,21 +54,22 @@ function buildRouter() {
       verificationToken: crypto.randomBytes(24).toString('hex'),
       photoUrl: null,
       dayonballs: 10,
+      gold: STARTING_GOLD,
+      arenaWins: 0,
       createdAt: new Date().toISOString(),
     };
     db.users.push(user);
 
-    const starterSpecies = db.creatures.find((c) => c.number === STARTER_SPECIES_NUMBER);
-    if (starterSpecies) {
+    db.creatures.forEach((species) => {
       db.ownedCreatures.push({
         id: nextId(db.ownedCreatures),
         userId: user.id,
-        speciesId: starterSpecies.id,
+        speciesId: species.id,
         level: 1,
         xp: 0,
         createdAt: new Date().toISOString(),
       });
-    }
+    });
 
     writeDb(db);
 

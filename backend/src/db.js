@@ -26,6 +26,8 @@ function readDb() {
   if (!Array.isArray(data.ownedCreatures)) data.ownedCreatures = [];
   data.users.forEach((u) => {
     if (typeof u.dayonballs !== 'number') u.dayonballs = 10;
+    if (typeof u.gold !== 'number') u.gold = 100;
+    if (typeof u.arenaWins !== 'number') u.arenaWins = 0;
   });
   data.ownedCreatures.forEach((oc) => {
     if (typeof oc.level !== 'number') oc.level = 1;
