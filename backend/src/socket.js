@@ -15,6 +15,7 @@ const WILD_USER_ID = -1;
 const WILD_SPECIES_NUMBERS = [1, 5, 6, 7, 10]; // catchable species pool for wild encounters
 const CONFUSION_SELF_HIT_CHANCE = 0.33;
 const CONFUSION_SELF_DAMAGE_PERCENT = 0.15;
+const ARENA_BETA_LEVEL = 10; // beta: Arena lets you pick any species, all fixed at this level
 
 function parseCookies(header) {
   const out = {};
@@ -72,6 +73,39 @@ function attachSocket(server) {
   function buildBattlePlayer(db, userId) {
     const user = db.users.find((u) => u.id === userId);
     const roster = enrichOwnedCreatures(db, userId);
+    return {
+      userId: user.id,
+      username: user.username,
+      photoUrl: user.photoUrl || null,
+      roster,
+      faintedIds: [],
+      creature: null,
+      hp: 0,
+      maxHp: 0,
+      usesLeft: {},
+      statMods: { attack: 1, defense: 1, speed: 1, accuracy: 1, evasion: 0 },
+      statusEffects: {},
+      fleeBonus: 0,
+      pendingSelection: true,
+    };
+  }
+
+  function buildArenaBattlePlayer(db, userId) {
+    const user = db.users.find((u) => u.id === userId);
+    const roster = db.creatures.map((species) => ({
+      id: species.id,
+      speciesId: species.id,
+      name: species.name,
+      number: species.number,
+      types: species.types || [],
+      weaknesses: species.weaknesses || [],
+      imageUrl: species.imageUrl || null,
+      level: ARENA_BETA_LEVEL,
+      xp: 0,
+      xpToNext: 0,
+      stats: scaleStats(species.stats, ARENA_BETA_LEVEL),
+      attacks: normalizeAttacks(species.attacks),
+    }));
     return {
       userId: user.id,
       username: user.username,
@@ -673,8 +707,8 @@ function attachSocket(server) {
       }
 
       const db = readDb();
-      const playerA = buildBattlePlayer(db, challenge.fromUserId);
-      const playerB = buildBattlePlayer(db, challenge.toUserId);
+      const playerA = buildArenaBattlePlayer(db, challenge.fromUserId);
+      const playerB = buildArenaBattlePlayer(db, challenge.toUserId);
       if (playerA.roster.length === 0 || playerB.roster.length === 0) return;
 
       const roomId = `battle-${challenge.fromUserId}-${challenge.toUserId}-${Date.now()}`;

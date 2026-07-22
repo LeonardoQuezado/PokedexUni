@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { normalizeAttacks } = require('./attacks');
 const { scaleStats, xpForLevel } = require('./leveling');
+const { balanceStats } = require('./statBudget');
 
 const SEED_FILE = path.join(__dirname, '..', 'seed', 'seed.json');
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -24,6 +25,9 @@ function readDb() {
   if (!Array.isArray(data.creatures)) data.creatures = [];
   if (!Array.isArray(data.users)) data.users = [];
   if (!Array.isArray(data.ownedCreatures)) data.ownedCreatures = [];
+  data.creatures.forEach((c) => {
+    if (c.stats) c.stats = balanceStats(c.stats);
+  });
   data.users.forEach((u) => {
     if (typeof u.dayonballs !== 'number') u.dayonballs = 10;
     if (typeof u.gold !== 'number') u.gold = 100;
