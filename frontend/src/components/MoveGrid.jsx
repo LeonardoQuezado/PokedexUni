@@ -1,17 +1,22 @@
-export default function MoveGrid({ attacks, usesLeft, onPick }) {
-  const showStruggle = attacks.every((a) => (usesLeft[a.id] ?? 0) <= 0);
+function isLocked(attack, opponentStatus) {
+  return attack.effect?.kind === 'requiresStatus' && !opponentStatus?.[attack.effect.status];
+}
+
+export default function MoveGrid({ attacks, usesLeft, onPick, opponentStatus = {} }) {
+  const showStruggle = attacks.every((a) => (usesLeft[a.id] ?? 0) <= 0 || isLocked(a, opponentStatus));
 
   return (
     <>
       <div className="move-grid">
         {attacks.map((a) => {
           const uses = usesLeft[a.id] ?? 0;
+          const locked = isLocked(a, opponentStatus);
           return (
             <button
               key={a.id}
               type="button"
               className="btn-move"
-              disabled={uses <= 0}
+              disabled={uses <= 0 || locked}
               onClick={() => onPick(a.id)}
             >
               <span className="move-name">{a.name}</span>
@@ -19,6 +24,7 @@ export default function MoveGrid({ attacks, usesLeft, onPick }) {
                 {a.type || 'Sem tipo'} · Pot. {a.power} · {a.category === 'especial' ? 'Especial' : 'Físico'}
               </span>
               <span className="move-uses">{uses}/3 usos</span>
+              {locked && <span className="move-locked">🔒 Requer inimigo lubrificado</span>}
             </button>
           );
         })}

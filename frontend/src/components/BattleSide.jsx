@@ -1,5 +1,10 @@
+const STATUS_LABELS = {
+  lubrificado: '💧 Lubrificado',
+};
+
 export default function BattleSide({ player }) {
   const pct = player.maxHp > 0 ? Math.max(0, Math.round((player.hp / player.maxHp) * 100)) : 0;
+  const activeStatuses = Object.entries(player.statusEffects || {}).filter(([, active]) => active);
 
   return (
     <div className="battle-player">
@@ -30,6 +35,15 @@ export default function BattleSide({ player }) {
             {player.creature.name}
             {player.level != null && <span className="battle-level-badge">Nv. {player.level}</span>}
           </span>
+          {activeStatuses.length > 0 && (
+            <div className="battle-status-badges">
+              {activeStatuses.map(([key]) => (
+                <span key={key} className="battle-status-badge">
+                  {STATUS_LABELS[key] || key}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -76,7 +76,12 @@ export default function BattleRoomPage() {
           {me.lockedIn ? (
             <p className="status-msg">Aguardando {opponent.username}...</p>
           ) : (
-            <MoveGrid attacks={me.creature.attacks} usesLeft={me.usesLeft} onPick={pickMove} />
+            <MoveGrid
+              attacks={me.creature.attacks}
+              usesLeft={me.usesLeft}
+              onPick={pickMove}
+              opponentStatus={opponent.statusEffects}
+            />
           )}
         </div>
       )}

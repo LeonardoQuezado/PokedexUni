@@ -749,16 +749,40 @@ legend {
 fieldset + fieldset {
   margin-top: 16px;
 }
+.attack-editor-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
 .attack-editor-row {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 0.7fr 0.9fr auto;
   gap: 8px;
-  margin-bottom: 10px;
   align-items: center;
 }
 .attack-editor-row input,
 .attack-editor-row select {
   width: 100%;
+}
+.attack-effect-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.attack-effect-row select {
+  flex: 1;
+  min-width: 220px;
+}
+.attack-effect-row input {
+  width: 90px;
+}
+.attack-effect-hint {
+  margin: 0;
+  font-size: 0.78rem;
 }
 .btn-remove-attack {
   padding: 8px 12px;
@@ -970,6 +994,23 @@ fieldset + fieldset {
   font-weight: 700;
   color: #fff;
 }
+.battle-status-badges {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 4px;
+}
+.battle-status-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.2);
+  border: 1px solid var(--neon-cyan);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+}
 .battle-vs {
   color: #fff;
   font-weight: 800;
@@ -1057,6 +1098,11 @@ fieldset + fieldset {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--accent-blue);
+}
+.move-locked {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fb7185;
 }
 .btn-move-struggle {
   width: 100%;

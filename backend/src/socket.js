@@ -71,6 +71,8 @@ function attachSocket(server) {
       hp: creature ? creature.stats.hp : 0,
       maxHp: creature ? creature.stats.hp : 0,
       usesLeft: creature ? Object.fromEntries(creature.attacks.map((a) => [a.id, USES_PER_MOVE])) : {},
+      statMods: { defense: 1, speed: 1 },
+      statusEffects: {},
     };
   }
 
@@ -95,6 +97,8 @@ function attachSocket(server) {
       hp: scaledStats.hp,
       maxHp: scaledStats.hp,
       usesLeft: Object.fromEntries(attacks.map((a) => [a.id, USES_PER_MOVE])),
+      statMods: { defense: 1, speed: 1 },
+      statusEffects: {},
     };
   }
 
@@ -138,12 +142,34 @@ function attachSocket(server) {
     return (player.creature?.attacks || []).find((a) => a.id === attackId) || null;
   }
 
-  function hasUsableMove(player) {
-    return (player.creature?.attacks || []).some((a) => (player.usesLeft[a.id] ?? 0) > 0);
+  function creatureLabel(player) {
+    return player.isWild ? player.creature.name : `${player.creature.name} de ${player.username}`;
   }
 
-  function pickAiMove(player) {
-    const usable = (player.creature?.attacks || []).filter((a) => (player.usesLeft[a.id] ?? 0) > 0);
+  function effectiveStats(player) {
+    const base = player.creature.stats;
+    const mods = player.statMods || { defense: 1, speed: 1 };
+    return {
+      ...base,
+      defense: base.defense * (mods.defense ?? 1),
+      speed: base.speed * (mods.speed ?? 1),
+    };
+  }
+
+  function moveIsUsable(player, attack, opponent) {
+    if ((player.usesLeft[attack.id] ?? 0) <= 0) return false;
+    if (attack.effect?.kind === 'requiresStatus') {
+      return !!opponent?.statusEffects?.[attack.effect.status];
+    }
+    return true;
+  }
+
+  function hasUsableMove(player, opponent) {
+    return (player.creature?.attacks || []).some((a) => moveIsUsable(player, a, opponent));
+  }
+
+  function pickAiMove(player, opponent) {
+    const usable = (player.creature?.attacks || []).filter((a) => moveIsUsable(player, a, opponent));
     if (usable.length === 0) return 'struggle';
     return usable[Math.floor(Math.random() * usable.length)].id;
   }
@@ -157,16 +183,65 @@ function attachSocket(server) {
       battle.log.push(`${attacker.username} usou ${move.name}, mas errou!`);
       return;
     }
+
+    const kind = move.effect?.kind;
+
+    if (kind === 'coinFlip') {
+      if (Math.random() < 0.5) {
+        const selfDamage = Math.max(1, Math.round(attacker.maxHp * move.effect.selfDamagePercent));
+        attacker.hp = Math.max(0, attacker.hp - selfDamage);
+        battle.log.push(
+          `${attacker.username} usou ${move.name} e duvidou de si mesmo! Sofreu ${selfDamage} de dano.`
+        );
+      } else {
+        const { damage, effective } = calculateDamage(
+          effectiveStats(attacker),
+          effectiveStats(defender),
+          defender.creature.weaknesses,
+          move
+        );
+        defender.hp = Math.max(0, defender.hp - damage);
+        battle.log.push(
+          `${attacker.username} usou ${move.name} com confiança total! Causou ${damage} de dano${
+            effective ? ' (super efetivo!)' : ''
+          }.`
+        );
+      }
+      return;
+    }
+
     const { damage, effective } = calculateDamage(
-      attacker.creature.stats,
-      defender.creature.stats,
+      effectiveStats(attacker),
+      effectiveStats(defender),
       defender.creature.weaknesses,
-      move
+      move,
+      kind === 'requiresStatus'
     );
     defender.hp = Math.max(0, defender.hp - damage);
     battle.log.push(
-      `${attacker.username} usou ${move.name}! Causou ${damage} de dano${effective ? ' (super efetivo!)' : ''}.`
+      `${attacker.username} usou ${move.name}! Causou ${damage} de dano${effective ? ' (super efetivo!)' : ''}${
+        kind === 'requiresStatus' ? ' (CRÍTICO!)' : ''
+      }.`
     );
+
+    if (kind === 'lowerDefense') {
+      defender.statMods.defense *= 1 - move.effect.amount;
+      battle.log.push(`A defesa de ${creatureLabel(defender)} caiu!`);
+    }
+
+    if (kind === 'applyStatus') {
+      defender.statusEffects[move.effect.status] = true;
+      attacker.statMods.speed *= 1 + move.effect.selfSpeedBoost;
+      battle.log.push(
+        `${creatureLabel(defender)} ficou ${move.effect.status}! A velocidade de ${creatureLabel(attacker)} aumentou!`
+      );
+    }
+
+    if (kind === 'requiresStatus') {
+      defender.statusEffects[move.effect.status] = false;
+      attacker.statMods.speed *= 1 - move.effect.selfSpeedPenalty;
+      battle.log.push(`${attacker.username} ficou exausto! Sua velocidade despencou.`);
+    }
   }
 
   function awardXp(battle, humanPlayer, wildPlayer) {
@@ -196,7 +271,7 @@ function attachSocket(server) {
     if (!move1 || !move2) return;
 
     const order =
-      (p1.creature?.stats.speed || 0) >= (p2.creature?.stats.speed || 0)
+      (effectiveStats(p1).speed || 0) >= (effectiveStats(p2).speed || 0)
         ? [
             [p1, move1, p2],
             [p2, move2, p1],
@@ -265,7 +340,7 @@ function attachSocket(server) {
     battle.log.push(`Você jogou uma Dayonball... ${wild.creature.name} escapou!`);
     writeDb(db);
 
-    const aiMoveId = pickAiMove(wild);
+    const aiMoveId = pickAiMove(wild, humanPlayer);
     const move = findMove(wild, aiMoveId);
     applyAttack(wild, move, humanPlayer, battle);
 
@@ -302,6 +377,7 @@ function attachSocket(server) {
           attacks: p.creature.attacks,
         },
         usesLeft: p.usesLeft,
+        statusEffects: p.statusEffects || {},
         lockedIn: battle.pendingMoves[p.userId] != null,
         dayonballs: p.isWild ? undefined : db.users.find((u) => u.id === p.userId)?.dayonballs ?? 0,
       })),
@@ -407,18 +483,20 @@ function attachSocket(server) {
         return;
       }
 
+      const opponent = battle.players.find((p) => p.userId !== socket.userId);
+
       if (attackId === 'struggle') {
-        if (hasUsableMove(player)) return;
+        if (hasUsableMove(player, opponent)) return;
       } else {
         const move = findMove(player, attackId);
-        if (!move || (player.usesLeft[move.id] ?? 0) <= 0) return;
+        if (!move || !moveIsUsable(player, move, opponent)) return;
       }
 
       battle.pendingMoves[socket.userId] = attackId;
 
       if (battle.isWild) {
         const wild = battle.players.find((p) => p.isWild);
-        battle.pendingMoves[wild.userId] = pickAiMove(wild);
+        battle.pendingMoves[wild.userId] = pickAiMove(wild, player);
       }
 
       if (Object.keys(battle.pendingMoves).length === battle.players.length) {

@@ -105,7 +105,12 @@ export default function WildBattlePage() {
                   <span className="move-meta">Sai do combate sem gastar Dayonball</span>
                 </button>
               </div>
-              <MoveGrid attacks={me.creature.attacks} usesLeft={me.usesLeft} onPick={act} />
+              <MoveGrid
+                attacks={me.creature.attacks}
+                usesLeft={me.usesLeft}
+                onPick={act}
+                opponentStatus={wild.statusEffects}
+              />
             </>
           )}
         </div>

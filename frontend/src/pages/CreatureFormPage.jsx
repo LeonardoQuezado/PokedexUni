@@ -26,7 +26,34 @@ const emptyForm = {
 };
 
 function emptyAttack() {
-  return { name: '', type: '', category: 'fisico', power: 50, accuracy: 100 };
+  return { name: '', type: '', category: 'fisico', power: 50, accuracy: 100, effectKind: '', effectValue: '' };
+}
+
+const EFFECT_VALUE_FIELD = {
+  lowerDefense: 'amount',
+  coinFlip: 'selfDamagePercent',
+  applyStatus: 'selfSpeedBoost',
+  requiresStatus: 'selfSpeedPenalty',
+};
+
+const EFFECT_VALUE_LABEL = {
+  lowerDefense: 'Redução de defesa do inimigo (%)',
+  coinFlip: 'Dano a si mesmo se hesitar (%)',
+  applyStatus: 'Ganho de velocidade próprio (%)',
+  requiresStatus: 'Perda de velocidade própria (%)',
+};
+
+function buildEffect(a) {
+  if (!a.effectKind) return undefined;
+  const valueField = EFFECT_VALUE_FIELD[a.effectKind];
+  const pct = Number(a.effectValue);
+  if (!Number.isFinite(pct)) return undefined;
+  const fraction = Math.min(90, Math.max(1, pct)) / 100;
+  const effect = { kind: a.effectKind, [valueField]: fraction };
+  if (a.effectKind === 'applyStatus' || a.effectKind === 'requiresStatus') {
+    effect.status = 'lubrificado';
+  }
+  return effect;
 }
 
 function toCsv(arr) {
@@ -71,14 +98,21 @@ export default function CreatureFormPage() {
           genderless: !!c.genderless,
           abilities: toCsv(c.abilities),
           weaknesses: toCsv(c.weaknesses),
-          attacks: (c.attacks || []).map((a) => ({
-            id: a.id,
-            name: a.name,
-            type: a.type || '',
-            category: a.category === 'especial' ? 'especial' : 'fisico',
-            power: a.power,
-            accuracy: a.accuracy,
-          })),
+          attacks: (c.attacks || []).map((a) => {
+            const kind = a.effect?.kind || '';
+            const valueField = EFFECT_VALUE_FIELD[kind];
+            const rawValue = valueField ? a.effect[valueField] : null;
+            return {
+              id: a.id,
+              name: a.name,
+              type: a.type || '',
+              category: a.category === 'especial' ? 'especial' : 'fisico',
+              power: a.power,
+              accuracy: a.accuracy,
+              effectKind: kind,
+              effectValue: rawValue != null ? Math.round(rawValue * 100) : '',
+            };
+          }),
           evolvesToId: c.evolvesToId != null ? String(c.evolvesToId) : '',
           hp: c.stats.hp,
           attack: c.stats.attack,
@@ -136,6 +170,7 @@ export default function CreatureFormPage() {
           category: a.category === 'especial' ? 'especial' : 'fisico',
           power: Number(a.power) || 50,
           accuracy: Number(a.accuracy) || 100,
+          ...(buildEffect(a) ? { effect: buildEffect(a) } : {}),
         })),
       evolvesToId: form.evolvesToId !== '' ? Number(form.evolvesToId) : null,
       stats: {
@@ -260,40 +295,65 @@ export default function CreatureFormPage() {
           <legend>Ataques (máx. {MAX_ATTACKS})</legend>
           {form.attacks.length === 0 && <p className="muted">Nenhum ataque ainda.</p>}
           {form.attacks.map((a, i) => (
-            <div className="attack-editor-row" key={i}>
-              <input
-                placeholder="Nome"
-                value={a.name}
-                onChange={(e) => updateAttack(i, 'name', e.target.value)}
-              />
-              <input
-                placeholder="Tipo (opcional)"
-                value={a.type}
-                onChange={(e) => updateAttack(i, 'type', e.target.value)}
-              />
-              <select value={a.category} onChange={(e) => updateAttack(i, 'category', e.target.value)}>
-                <option value="fisico">Físico</option>
-                <option value="especial">Especial</option>
-              </select>
-              <input
-                type="number"
-                placeholder="Poder"
-                value={a.power}
-                onChange={(e) => updateAttack(i, 'power', e.target.value)}
-              />
-              <input
-                type="number"
-                placeholder="Precisão %"
-                value={a.accuracy}
-                onChange={(e) => updateAttack(i, 'accuracy', e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn-danger btn-remove-attack"
-                onClick={() => removeAttack(i)}
-              >
-                Remover
-              </button>
+            <div className="attack-editor-card" key={i}>
+              <div className="attack-editor-row">
+                <input
+                  placeholder="Nome"
+                  value={a.name}
+                  onChange={(e) => updateAttack(i, 'name', e.target.value)}
+                />
+                <input
+                  placeholder="Tipo (opcional)"
+                  value={a.type}
+                  onChange={(e) => updateAttack(i, 'type', e.target.value)}
+                />
+                <select value={a.category} onChange={(e) => updateAttack(i, 'category', e.target.value)}>
+                  <option value="fisico">Físico</option>
+                  <option value="especial">Especial</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="Poder"
+                  value={a.power}
+                  onChange={(e) => updateAttack(i, 'power', e.target.value)}
+                />
+                <input
+                  type="number"
+                  placeholder="Precisão %"
+                  value={a.accuracy}
+                  onChange={(e) => updateAttack(i, 'accuracy', e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn-danger btn-remove-attack"
+                  onClick={() => removeAttack(i)}
+                >
+                  Remover
+                </button>
+              </div>
+              <div className="attack-effect-row">
+                <select
+                  value={a.effectKind}
+                  onChange={(e) => updateAttack(i, 'effectKind', e.target.value)}
+                >
+                  <option value="">Sem efeito especial</option>
+                  <option value="lowerDefense">Reduz defesa do inimigo</option>
+                  <option value="coinFlip">Risco: acerta si mesmo ou o inimigo</option>
+                  <option value="applyStatus">Deixa o inimigo lubrificado + ganha velocidade</option>
+                  <option value="requiresStatus">Finalizador: requer inimigo lubrificado, crítico garantido</option>
+                </select>
+                {a.effectKind && (
+                  <input
+                    type="number"
+                    min="1"
+                    max="90"
+                    placeholder="%"
+                    value={a.effectValue}
+                    onChange={(e) => updateAttack(i, 'effectValue', e.target.value)}
+                  />
+                )}
+                {a.effectKind && <span className="hint attack-effect-hint">{EFFECT_VALUE_LABEL[a.effectKind]}</span>}
+              </div>
             </div>
           ))}
           {form.attacks.length < MAX_ATTACKS && (
