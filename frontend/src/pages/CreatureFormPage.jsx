@@ -17,6 +17,7 @@ const emptyForm = {
   weaknesses: '',
   attacks: [],
   evolvesToId: '',
+  wildFleeChance: '',
   hp: 50,
   attack: 50,
   defense: 50,
@@ -26,33 +27,85 @@ const emptyForm = {
 };
 
 function emptyAttack() {
-  return { name: '', type: '', category: 'fisico', power: 50, accuracy: 100, effectKind: '', effectValue: '' };
+  return {
+    name: '',
+    type: '',
+    category: 'fisico',
+    power: 50,
+    accuracy: 100,
+    effectKind: '',
+    effectValues: {},
+    requiresSelfStatus: false,
+  };
 }
 
-const EFFECT_VALUE_FIELD = {
-  lowerDefense: 'amount',
-  coinFlip: 'selfDamagePercent',
-  applyStatus: 'selfSpeedBoost',
-  requiresStatus: 'selfSpeedPenalty',
+const EFFECT_FIELDS = {
+  lowerDefense: [{ key: 'amount', label: 'Redução de defesa do inimigo (%)' }],
+  coinFlip: [{ key: 'selfDamagePercent', label: 'Dano a si mesmo se hesitar (%)' }],
+  applyStatus: [{ key: 'selfSpeedBoost', label: 'Ganho de velocidade próprio (%)' }],
+  requiresStatus: [{ key: 'selfSpeedPenalty', label: 'Perda de velocidade própria (%)' }],
+  critChance: [
+    { key: 'chance', label: 'Chance de crítico (%)' },
+    { key: 'selfScareFleeBoost', label: 'Aumento na chance de fugir após crítico (%)' },
+  ],
+  stackingBuff: [{ key: 'statBoostPerStack', label: 'Ganho de ataque por uso (%)' }],
+  resetStacksHeal: [],
+  tauntStatus: [],
+  selfHeal: [{ key: 'healPercent', label: 'Cura (% do PS máximo)' }],
+  lowerAccuracy: [{ key: 'amount', label: 'Redução de precisão do inimigo (%)' }],
+  selfBuffGate: [
+    { key: 'speedBoost', label: 'Ganho de velocidade (%)' },
+    { key: 'defenseBoost', label: 'Ganho de defesa (%)' },
+  ],
+  invulnerable: [],
+  chanceConfuse: [{ key: 'chance', label: 'Chance de confundir o inimigo (%)' }],
+  escalatingPerUse: [
+    { key: 'power1', label: 'Poder no 1º uso' },
+    { key: 'power2', label: 'Poder no 2º uso' },
+    { key: 'power3', label: 'Poder no 3º uso' },
+  ],
 };
 
-const EFFECT_VALUE_LABEL = {
-  lowerDefense: 'Redução de defesa do inimigo (%)',
-  coinFlip: 'Dano a si mesmo se hesitar (%)',
-  applyStatus: 'Ganho de velocidade próprio (%)',
-  requiresStatus: 'Perda de velocidade própria (%)',
+const EFFECT_KIND_LABELS = {
+  lowerDefense: 'Reduz defesa do inimigo',
+  coinFlip: 'Risco: acerta si mesmo ou o inimigo',
+  applyStatus: 'Aplica status no inimigo + ganha velocidade',
+  requiresStatus: 'Finalizador: requer status no inimigo, crítico garantido',
+  critChance: 'Chance de crítico (fica assustado se acertar)',
+  stackingBuff: 'Ganha ataque a cada uso (acumulativo)',
+  resetStacksHeal: 'Remove o ataque acumulado e cura tudo',
+  tauntStatus: 'Provoca: inimigo só usa ataque fraco no próximo turno',
+  selfHeal: 'Cura a si mesmo',
+  lowerAccuracy: 'Reduz a precisão do inimigo',
+  selfBuffGate: 'Aumenta velocidade e defesa própria (libera ataques com pré-requisito)',
+  invulnerable: 'Fica invulnerável por 1 turno',
+  chanceConfuse: 'Chance de confundir o inimigo',
+  escalatingPerUse: 'Sempre acerta; poder aumenta a cada uso (3 usos)',
 };
 
 function buildEffect(a) {
   if (!a.effectKind) return undefined;
-  const valueField = EFFECT_VALUE_FIELD[a.effectKind];
-  const pct = Number(a.effectValue);
-  if (!Number.isFinite(pct)) return undefined;
-  const fraction = Math.min(90, Math.max(1, pct)) / 100;
-  const effect = { kind: a.effectKind, [valueField]: fraction };
-  if (a.effectKind === 'applyStatus' || a.effectKind === 'requiresStatus') {
-    effect.status = 'lubrificado';
+  const fields = EFFECT_FIELDS[a.effectKind] || [];
+  const values = a.effectValues || {};
+
+  let effect;
+  if (a.effectKind === 'escalatingPerUse') {
+    const powers = fields.map((f) => {
+      const n = Number(values[f.key]);
+      return Number.isFinite(n) && n > 0 ? Math.min(150, Math.round(n)) : undefined;
+    });
+    if (powers.some((p) => p === undefined)) return undefined;
+    effect = { kind: 'escalatingPerUse', powers };
+  } else {
+    effect = { kind: a.effectKind };
+    for (const f of fields) {
+      const pct = Number(values[f.key]);
+      if (!Number.isFinite(pct)) return undefined;
+      effect[f.key] = Math.min(90, Math.max(1, pct)) / 100;
+    }
   }
+
+  if (a.requiresSelfStatus) effect.requiresSelfStatus = 'estudando';
   return effect;
 }
 
@@ -100,8 +153,19 @@ export default function CreatureFormPage() {
           weaknesses: toCsv(c.weaknesses),
           attacks: (c.attacks || []).map((a) => {
             const kind = a.effect?.kind || '';
-            const valueField = EFFECT_VALUE_FIELD[kind];
-            const rawValue = valueField ? a.effect[valueField] : null;
+            const fields = EFFECT_FIELDS[kind] || [];
+            const effectValues = {};
+            if (kind === 'escalatingPerUse') {
+              const powers = a.effect?.powers || [];
+              fields.forEach((f, idx) => {
+                if (powers[idx] != null) effectValues[f.key] = powers[idx];
+              });
+            } else {
+              fields.forEach((f) => {
+                const raw = a.effect?.[f.key];
+                if (raw != null) effectValues[f.key] = Math.round(raw * 100);
+              });
+            }
             return {
               id: a.id,
               name: a.name,
@@ -110,10 +174,12 @@ export default function CreatureFormPage() {
               power: a.power,
               accuracy: a.accuracy,
               effectKind: kind,
-              effectValue: rawValue != null ? Math.round(rawValue * 100) : '',
+              effectValues,
+              requiresSelfStatus: !!a.effect?.requiresSelfStatus,
             };
           }),
           evolvesToId: c.evolvesToId != null ? String(c.evolvesToId) : '',
+          wildFleeChance: c.wildFleeChance ? Math.round(c.wildFleeChance * 100) : '',
           hp: c.stats.hp,
           attack: c.stats.attack,
           defense: c.stats.defense,
@@ -134,6 +200,25 @@ export default function CreatureFormPage() {
     setForm((f) => {
       const attacks = [...f.attacks];
       attacks[index] = { ...attacks[index], [field]: value };
+      return { ...f, attacks };
+    });
+  }
+
+  function updateAttackEffectKind(index, kind) {
+    setForm((f) => {
+      const attacks = [...f.attacks];
+      attacks[index] = { ...attacks[index], effectKind: kind, effectValues: {} };
+      return { ...f, attacks };
+    });
+  }
+
+  function updateAttackEffectValue(index, key, value) {
+    setForm((f) => {
+      const attacks = [...f.attacks];
+      attacks[index] = {
+        ...attacks[index],
+        effectValues: { ...attacks[index].effectValues, [key]: value },
+      };
       return { ...f, attacks };
     });
   }
@@ -173,6 +258,7 @@ export default function CreatureFormPage() {
           ...(buildEffect(a) ? { effect: buildEffect(a) } : {}),
         })),
       evolvesToId: form.evolvesToId !== '' ? Number(form.evolvesToId) : null,
+      wildFleeChance: form.wildFleeChance !== '' ? Number(form.wildFleeChance) / 100 : 0,
       stats: {
         hp: Number(form.hp),
         attack: Number(form.attack),
@@ -260,6 +346,17 @@ export default function CreatureFormPage() {
               ))}
           </select>
         </label>
+        <label>
+          Chance de fugir quando selvagem (%, opcional)
+          <input
+            type="number"
+            min="0"
+            max="90"
+            placeholder="0"
+            value={form.wildFleeChance}
+            onChange={(e) => update('wildFleeChance', e.target.value)}
+          />
+        </label>
 
         <fieldset className="full">
           <legend>Estatísticas</legend>
@@ -332,28 +429,39 @@ export default function CreatureFormPage() {
                 </button>
               </div>
               <div className="attack-effect-row">
-                <select
-                  value={a.effectKind}
-                  onChange={(e) => updateAttack(i, 'effectKind', e.target.value)}
-                >
+                <select value={a.effectKind} onChange={(e) => updateAttackEffectKind(i, e.target.value)}>
                   <option value="">Sem efeito especial</option>
-                  <option value="lowerDefense">Reduz defesa do inimigo</option>
-                  <option value="coinFlip">Risco: acerta si mesmo ou o inimigo</option>
-                  <option value="applyStatus">Deixa o inimigo lubrificado + ganha velocidade</option>
-                  <option value="requiresStatus">Finalizador: requer inimigo lubrificado, crítico garantido</option>
+                  {Object.entries(EFFECT_KIND_LABELS).map(([kind, label]) => (
+                    <option key={kind} value={kind}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
-                {a.effectKind && (
-                  <input
-                    type="number"
-                    min="1"
-                    max="90"
-                    placeholder="%"
-                    value={a.effectValue}
-                    onChange={(e) => updateAttack(i, 'effectValue', e.target.value)}
-                  />
-                )}
-                {a.effectKind && <span className="hint attack-effect-hint">{EFFECT_VALUE_LABEL[a.effectKind]}</span>}
               </div>
+              {a.effectKind &&
+                EFFECT_FIELDS[a.effectKind].map((f) => (
+                  <div className="attack-effect-row" key={f.key}>
+                    <input
+                      type="number"
+                      min="1"
+                      max={a.effectKind === 'escalatingPerUse' ? 150 : 90}
+                      placeholder={a.effectKind === 'escalatingPerUse' ? 'Poder' : '%'}
+                      value={a.effectValues?.[f.key] ?? ''}
+                      onChange={(e) => updateAttackEffectValue(i, f.key, e.target.value)}
+                    />
+                    <span className="hint attack-effect-hint">{f.label}</span>
+                  </div>
+                ))}
+              {a.effectKind && (
+                <label className="checkbox-label attack-effect-row">
+                  <input
+                    type="checkbox"
+                    checked={a.requiresSelfStatus}
+                    onChange={(e) => updateAttack(i, 'requiresSelfStatus', e.target.checked)}
+                  />
+                  Só pode ser usado após um autobuff (ex.: Estudo Acessível)
+                </label>
+              )}
             </div>
           ))}
           {form.attacks.length < MAX_ATTACKS && (

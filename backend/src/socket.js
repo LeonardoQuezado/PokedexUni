@@ -1,11 +1,13 @@
 const { Server } = require('socket.io');
 const { verifyToken, COOKIE_NAME } = require('./auth');
 const { readDb, writeDb, enrichOwnedCreatures } = require('./db');
-const { STRUGGLE, USES_PER_MOVE, normalizeAttacks, calculateDamage } = require('./attacks');
+const { STRUGGLE, INCONSEQUENT_ATTACK, USES_PER_MOVE, normalizeAttacks, calculateDamage } = require('./attacks');
 const { scaleStats, xpReward, applyXp, randomWildLevel } = require('./leveling');
 
 const WILD_USER_ID = -1;
-const WILD_SPECIES_NUMBER = 1; // Dayon is the only catchable species for now
+const WILD_SPECIES_NUMBERS = [1, 5, 6, 7, 10]; // catchable species pool for wild encounters
+const CONFUSION_SELF_HIT_CHANCE = 0.33;
+const CONFUSION_SELF_DAMAGE_PERCENT = 0.15;
 
 function parseCookies(header) {
   const out = {};
@@ -71,8 +73,9 @@ function attachSocket(server) {
       hp: creature ? creature.stats.hp : 0,
       maxHp: creature ? creature.stats.hp : 0,
       usesLeft: creature ? Object.fromEntries(creature.attacks.map((a) => [a.id, USES_PER_MOVE])) : {},
-      statMods: { defense: 1, speed: 1 },
+      statMods: { attack: 1, defense: 1, speed: 1, accuracy: 1 },
       statusEffects: {},
+      fleeBonus: 0,
     };
   }
 
@@ -97,9 +100,17 @@ function attachSocket(server) {
       hp: scaledStats.hp,
       maxHp: scaledStats.hp,
       usesLeft: Object.fromEntries(attacks.map((a) => [a.id, USES_PER_MOVE])),
-      statMods: { defense: 1, speed: 1 },
+      statMods: { attack: 1, defense: 1, speed: 1, accuracy: 1 },
       statusEffects: {},
+      fleeBonus: 0,
+      wildFleeChance: species.wildFleeChance || 0,
     };
+  }
+
+  function pickWildSpecies(db) {
+    const candidates = db.creatures.filter((c) => WILD_SPECIES_NUMBERS.includes(c.number));
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
   function createBattle(roomId, playerA, playerB, extra) {
@@ -117,7 +128,7 @@ function attachSocket(server) {
   }
 
   function createWildBattle(db, humanUserId) {
-    const species = db.creatures.find((c) => c.number === WILD_SPECIES_NUMBER);
+    const species = pickWildSpecies(db);
     if (!species) return null;
 
     const human = buildBattlePlayer(db, humanUserId);
@@ -130,11 +141,17 @@ function attachSocket(server) {
       isWild: true,
       captured: false,
       fled: false,
+      wildFled: false,
       xpGained: null,
       leveledUp: false,
       newLevel: null,
       log: [`Um ${species.name} selvagem (nível ${wildLevel}) apareceu!`],
     });
+  }
+
+  function wildTriesToFlee(wild) {
+    const chance = (wild.wildFleeChance || 0) + (wild.fleeBonus || 0);
+    return chance > 0 && Math.random() < chance;
   }
 
   function findMove(player, attackId) {
@@ -148,9 +165,10 @@ function attachSocket(server) {
 
   function effectiveStats(player) {
     const base = player.creature.stats;
-    const mods = player.statMods || { defense: 1, speed: 1 };
+    const mods = player.statMods || { attack: 1, defense: 1, speed: 1 };
     return {
       ...base,
+      attack: base.attack * (mods.attack ?? 1),
       defense: base.defense * (mods.defense ?? 1),
       speed: base.speed * (mods.speed ?? 1),
     };
@@ -159,7 +177,10 @@ function attachSocket(server) {
   function moveIsUsable(player, attack, opponent) {
     if ((player.usesLeft[attack.id] ?? 0) <= 0) return false;
     if (attack.effect?.kind === 'requiresStatus') {
-      return !!opponent?.statusEffects?.[attack.effect.status];
+      if (!opponent?.statusEffects?.[attack.effect.status]) return false;
+    }
+    if (attack.effect?.requiresSelfStatus) {
+      if (!player.statusEffects?.[attack.effect.requiresSelfStatus]) return false;
     }
     return true;
   }
@@ -175,16 +196,63 @@ function attachSocket(server) {
   }
 
   function applyAttack(attacker, move, defender, battle) {
-    if (move.id !== 'struggle') {
+    if (move.id !== 'struggle' && move.id !== 'inconsequente') {
       attacker.usesLeft[move.id] = Math.max(0, (attacker.usesLeft[move.id] ?? 0) - 1);
     }
-    const hits = Math.random() * 100 < move.accuracy;
+
+    if (attacker.statusEffects?.confuso && Math.random() < CONFUSION_SELF_HIT_CHANCE) {
+      const selfDamage = Math.max(1, Math.round(attacker.maxHp * CONFUSION_SELF_DAMAGE_PERCENT));
+      attacker.hp = Math.max(0, attacker.hp - selfDamage);
+      battle.log.push(`${attacker.username} está confuso(a) e acabou se atacando! Sofreu ${selfDamage} de dano.`);
+      return;
+    }
+
+    const kind = move.effect?.kind;
+    const effectiveAccuracy = move.accuracy * (attacker.statMods?.accuracy ?? 1);
+    const hits = Math.random() * 100 < effectiveAccuracy;
     if (!hits) {
       battle.log.push(`${attacker.username} usou ${move.name}, mas errou!`);
       return;
     }
 
-    const kind = move.effect?.kind;
+    if (kind === 'selfHeal') {
+      const healAmount = Math.max(1, Math.round(attacker.maxHp * move.effect.healPercent));
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
+      battle.log.push(`${attacker.username} usou ${move.name} e recuperou ${healAmount} de PS!`);
+      return;
+    }
+
+    if (kind === 'selfBuffGate') {
+      attacker.statusEffects[move.effect.status] = true;
+      attacker.statMods.speed *= 1 + move.effect.speedBoost;
+      attacker.statMods.defense *= 1 + move.effect.defenseBoost;
+      battle.log.push(`${attacker.username} usou ${move.name}! Velocidade e defesa aumentaram.`);
+      return;
+    }
+
+    if (kind === 'invulnerable') {
+      attacker.statusEffects.invulneravel = true;
+      battle.log.push(`${attacker.username} usou ${move.name} e ficou invulnerável!`);
+      return;
+    }
+
+    if (kind === 'resetStacksHeal') {
+      const stat = move.effect.stat || 'attack';
+      attacker.statMods[stat] = 1;
+      attacker.hp = attacker.maxHp;
+      battle.log.push(
+        `${attacker.username} usou ${move.name}! Toda a fúria acumulada sumiu, mas a vida foi totalmente restaurada.`
+      );
+      return;
+    }
+
+    if (kind === 'tauntStatus') {
+      defender.statusEffects[move.effect.status] = true;
+      battle.log.push(
+        `${creatureLabel(defender)} foi provocado(a) e só vai conseguir usar um ataque fraco no próximo turno!`
+      );
+      return;
+    }
 
     if (kind === 'coinFlip') {
       if (Math.random() < 0.5) {
@@ -193,6 +261,9 @@ function attachSocket(server) {
         battle.log.push(
           `${attacker.username} usou ${move.name} e duvidou de si mesmo! Sofreu ${selfDamage} de dano.`
         );
+      } else if (defender.statusEffects?.invulneravel) {
+        defender.statusEffects.invulneravel = false;
+        battle.log.push(`${creatureLabel(defender)} estava invulnerável e não sofreu dano!`);
       } else {
         const { damage, effective } = calculateDamage(
           effectiveStats(attacker),
@@ -210,23 +281,46 @@ function attachSocket(server) {
       return;
     }
 
-    const { damage, effective } = calculateDamage(
+    if (defender.statusEffects?.invulneravel) {
+      defender.statusEffects.invulneravel = false;
+      battle.log.push(`${creatureLabel(defender)} estava invulnerável e não sofreu dano!`);
+      return;
+    }
+
+    let effectiveMove = move;
+    if (kind === 'escalatingPerUse') {
+      const useNumber = USES_PER_MOVE - (attacker.usesLeft[move.id] ?? 0);
+      const tierIndex = Math.max(0, Math.min(useNumber, move.effect.powers.length) - 1);
+      effectiveMove = { ...move, power: move.effect.powers[tierIndex] };
+    }
+
+    let forceCrit = kind === 'requiresStatus';
+    if (kind === 'critChance') {
+      forceCrit = Math.random() < move.effect.chance;
+    }
+
+    const { damage, effective, crit } = calculateDamage(
       effectiveStats(attacker),
       effectiveStats(defender),
       defender.creature.weaknesses,
-      move,
-      kind === 'requiresStatus'
+      effectiveMove,
+      forceCrit
     );
     defender.hp = Math.max(0, defender.hp - damage);
     battle.log.push(
       `${attacker.username} usou ${move.name}! Causou ${damage} de dano${effective ? ' (super efetivo!)' : ''}${
-        kind === 'requiresStatus' ? ' (CRÍTICO!)' : ''
+        crit ? ' (CRÍTICO!)' : ''
       }.`
     );
 
     if (kind === 'lowerDefense') {
       defender.statMods.defense *= 1 - move.effect.amount;
       battle.log.push(`A defesa de ${creatureLabel(defender)} caiu!`);
+    }
+
+    if (kind === 'lowerAccuracy') {
+      defender.statMods.accuracy *= 1 - move.effect.amount;
+      battle.log.push(`A precisão de ${creatureLabel(defender)} caiu!`);
     }
 
     if (kind === 'applyStatus') {
@@ -241,6 +335,22 @@ function attachSocket(server) {
       defender.statusEffects[move.effect.status] = false;
       attacker.statMods.speed *= 1 - move.effect.selfSpeedPenalty;
       battle.log.push(`${attacker.username} ficou exausto! Sua velocidade despencou.`);
+    }
+
+    if (kind === 'stackingBuff') {
+      const stat = move.effect.stat || 'attack';
+      attacker.statMods[stat] *= 1 + move.effect.statBoostPerStack;
+      battle.log.push(`${attacker.username} está cada vez mais furioso(a)!`);
+    }
+
+    if (kind === 'chanceConfuse' && Math.random() < move.effect.chance) {
+      defender.statusEffects[move.effect.status] = true;
+      battle.log.push(`${creatureLabel(defender)} ficou confuso(a)!`);
+    }
+
+    if (kind === 'critChance' && crit) {
+      attacker.fleeBonus = (attacker.fleeBonus || 0) + move.effect.selfScareFleeBoost;
+      battle.log.push(`${attacker.username} se assustou com o próprio golpe e agora quer fugir!`);
     }
   }
 
@@ -266,9 +376,18 @@ function attachSocket(server) {
 
   function resolveTurn(battle) {
     const [p1, p2] = battle.players;
-    const move1 = findMove(p1, battle.pendingMoves[p1.userId]);
-    const move2 = findMove(p2, battle.pendingMoves[p2.userId]);
+    let move1 = findMove(p1, battle.pendingMoves[p1.userId]);
+    let move2 = findMove(p2, battle.pendingMoves[p2.userId]);
     if (!move1 || !move2) return;
+
+    if (p1.statusEffects?.provocado) {
+      move1 = INCONSEQUENT_ATTACK;
+      p1.statusEffects.provocado = false;
+    }
+    if (p2.statusEffects?.provocado) {
+      move2 = INCONSEQUENT_ATTACK;
+      p2.statusEffects.provocado = false;
+    }
 
     const order =
       (effectiveStats(p1).speed || 0) >= (effectiveStats(p2).speed || 0)
@@ -359,6 +478,7 @@ function attachSocket(server) {
       winnerId: battle.winnerId,
       captured: !!battle.captured,
       fled: !!battle.fled,
+      wildFled: !!battle.wildFled,
       xpGained: battle.xpGained ?? null,
       leveledUp: !!battle.leveledUp,
       newLevel: battle.newLevel ?? null,
@@ -496,6 +616,13 @@ function attachSocket(server) {
 
       if (battle.isWild) {
         const wild = battle.players.find((p) => p.isWild);
+        if (wildTriesToFlee(wild)) {
+          battle.status = 'finished';
+          battle.wildFled = true;
+          battle.log.push(`${wild.creature.name} fugiu apavorado(a)!`);
+          io.to(roomId).emit('battle:state', serializeBattle(battle));
+          return;
+        }
         battle.pendingMoves[wild.userId] = pickAiMove(wild, player);
       }
 

@@ -10,7 +10,31 @@ const STRUGGLE = {
   accuracy: 100,
 };
 
-const EFFECT_KINDS = ['lowerDefense', 'coinFlip', 'applyStatus', 'requiresStatus'];
+const INCONSEQUENT_ATTACK = {
+  id: 'inconsequente',
+  name: 'Ataque Inconsequente',
+  type: null,
+  category: 'fisico',
+  power: 55,
+  accuracy: 100,
+};
+
+const EFFECT_KINDS = [
+  'lowerDefense',
+  'coinFlip',
+  'applyStatus',
+  'requiresStatus',
+  'critChance',
+  'stackingBuff',
+  'resetStacksHeal',
+  'tauntStatus',
+  'selfHeal',
+  'lowerAccuracy',
+  'selfBuffGate',
+  'invulnerable',
+  'chanceConfuse',
+  'escalatingPerUse',
+];
 const DEFAULT_STATUS = 'lubrificado';
 
 function clampPct(value, fallback) {
@@ -19,30 +43,81 @@ function clampPct(value, fallback) {
   return Math.min(0.9, Math.max(0.01, n));
 }
 
+function clampPower(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.min(150, Math.round(n)) : fallback;
+}
+
 function normalizeEffect(raw) {
   if (!raw || typeof raw !== 'object' || !EFFECT_KINDS.includes(raw.kind)) return null;
 
+  let effect;
   if (raw.kind === 'lowerDefense') {
-    return { kind: 'lowerDefense', amount: clampPct(raw.amount, 0.25) };
-  }
-  if (raw.kind === 'coinFlip') {
-    return { kind: 'coinFlip', selfDamagePercent: clampPct(raw.selfDamagePercent, 0.1) };
-  }
-  if (raw.kind === 'applyStatus') {
-    return {
+    effect = { kind: 'lowerDefense', amount: clampPct(raw.amount, 0.25) };
+  } else if (raw.kind === 'coinFlip') {
+    effect = { kind: 'coinFlip', selfDamagePercent: clampPct(raw.selfDamagePercent, 0.1) };
+  } else if (raw.kind === 'applyStatus') {
+    effect = {
       kind: 'applyStatus',
       status: String(raw.status || DEFAULT_STATUS).slice(0, 30),
       selfSpeedBoost: clampPct(raw.selfSpeedBoost, 0.2),
     };
-  }
-  if (raw.kind === 'requiresStatus') {
-    return {
+  } else if (raw.kind === 'requiresStatus') {
+    effect = {
       kind: 'requiresStatus',
       status: String(raw.status || DEFAULT_STATUS).slice(0, 30),
       selfSpeedPenalty: clampPct(raw.selfSpeedPenalty, 0.5),
     };
+  } else if (raw.kind === 'critChance') {
+    effect = {
+      kind: 'critChance',
+      chance: clampPct(raw.chance, 0.35),
+      selfScareFleeBoost: clampPct(raw.selfScareFleeBoost, 0.25),
+    };
+  } else if (raw.kind === 'stackingBuff') {
+    effect = { kind: 'stackingBuff', stat: 'attack', statBoostPerStack: clampPct(raw.statBoostPerStack, 0.15) };
+  } else if (raw.kind === 'resetStacksHeal') {
+    effect = { kind: 'resetStacksHeal', stat: 'attack' };
+  } else if (raw.kind === 'tauntStatus') {
+    effect = { kind: 'tauntStatus', status: 'provocado' };
+  } else if (raw.kind === 'selfHeal') {
+    effect = { kind: 'selfHeal', healPercent: clampPct(raw.healPercent, 0.35) };
+  } else if (raw.kind === 'lowerAccuracy') {
+    effect = { kind: 'lowerAccuracy', amount: clampPct(raw.amount, 0.3) };
+  } else if (raw.kind === 'selfBuffGate') {
+    effect = {
+      kind: 'selfBuffGate',
+      status: String(raw.status || 'estudando').slice(0, 30),
+      speedBoost: clampPct(raw.speedBoost, 0.2),
+      defenseBoost: clampPct(raw.defenseBoost, 0.2),
+    };
+  } else if (raw.kind === 'invulnerable') {
+    effect = { kind: 'invulnerable' };
+  } else if (raw.kind === 'chanceConfuse') {
+    effect = {
+      kind: 'chanceConfuse',
+      chance: clampPct(raw.chance, 0.3),
+      status: String(raw.status || 'confuso').slice(0, 30),
+    };
+  } else if (raw.kind === 'escalatingPerUse') {
+    const tiers = Array.isArray(raw.powers) ? raw.powers : [];
+    effect = {
+      kind: 'escalatingPerUse',
+      powers: [
+        clampPower(tiers[0], 25),
+        clampPower(tiers[1], 60),
+        clampPower(tiers[2], 140),
+      ],
+    };
+  } else {
+    return null;
   }
-  return null;
+
+  if (raw.requiresSelfStatus) {
+    effect.requiresSelfStatus = String(raw.requiresSelfStatus).slice(0, 30);
+  }
+
+  return effect;
 }
 
 function normalizeAttack(raw, index) {
@@ -90,6 +165,7 @@ module.exports = {
   MAX_ATTACKS,
   USES_PER_MOVE,
   STRUGGLE,
+  INCONSEQUENT_ATTACK,
   DEFAULT_STATUS,
   normalizeAttack,
   normalizeAttacks,

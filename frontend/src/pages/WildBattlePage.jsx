@@ -45,7 +45,8 @@ export default function WildBattlePage() {
   const wild = battle.players.find((p) => p.isWild);
   const isOver = battle.status === 'finished';
   const lost = isOver && me.hp <= 0;
-  const wonNoCatch = isOver && !battle.captured && !battle.fled && !lost;
+  const wildFled = isOver && !!battle.wildFled;
+  const wonNoCatch = isOver && !battle.captured && !battle.fled && !wildFled && !lost;
 
   return (
     <div className="page battle-room-page">
@@ -69,6 +70,7 @@ export default function WildBattlePage() {
           <h2>
             {battle.captured && `Você capturou ${wild.creature.name}!`}
             {battle.fled && 'Você fugiu do combate.'}
+            {wildFled && `${wild.creature.name} fugiu apavorado(a) antes que você pudesse fazer algo!`}
             {wonNoCatch && `Você venceu, mas ${wild.creature.name} fugiu no susto!`}
             {lost && `Seu ${me.creature.name} desmaiou...`}
           </h2>
@@ -110,6 +112,7 @@ export default function WildBattlePage() {
                 usesLeft={me.usesLeft}
                 onPick={act}
                 opponentStatus={wild.statusEffects}
+                selfStatus={me.statusEffects}
               />
             </>
           )}

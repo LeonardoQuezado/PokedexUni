@@ -39,6 +39,12 @@ function buildRouter(uploadsDir) {
     return Array.isArray(value) ? value.map((v) => String(v).trim()).filter(Boolean) : [];
   }
 
+  function clampFleeChance(value, fallback) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return fallback;
+    return Math.min(0.9, n);
+  }
+
   function parseEvolvesToId(value) {
     if (value === undefined || value === null || value === '') return null;
     const n = Number(value);
@@ -171,6 +177,7 @@ function buildRouter(uploadsDir) {
         spDefense: Number(body.stats?.spDefense) || 50,
         speed: Number(body.stats?.speed) || 50,
       },
+      wildFleeChance: clampFleeChance(body.wildFleeChance, 0),
       imageUrl: null,
       evolvesToId,
     };
@@ -223,6 +230,10 @@ function buildRouter(uploadsDir) {
             speed: Number(body.stats.speed) || existing.stats.speed,
           }
         : existing.stats,
+      wildFleeChance:
+        body.wildFleeChance !== undefined
+          ? clampFleeChance(body.wildFleeChance, 0)
+          : existing.wildFleeChance ?? 0,
       evolvesToId,
     };
 

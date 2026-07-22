@@ -81,6 +81,7 @@ export default function BattleRoomPage() {
               usesLeft={me.usesLeft}
               onPick={pickMove}
               opponentStatus={opponent.statusEffects}
+              selfStatus={me.statusEffects}
             />
           )}
         </div>

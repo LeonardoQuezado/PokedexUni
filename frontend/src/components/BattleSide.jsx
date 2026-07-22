@@ -1,5 +1,9 @@
 const STATUS_LABELS = {
   lubrificado: '💧 Lubrificado',
+  provocado: '😡 Provocado',
+  confuso: '💫 Confuso',
+  invulneravel: '🛡️ Invulnerável',
+  estudando: '📖 Estudando',
 };
 
 export default function BattleSide({ player }) {
